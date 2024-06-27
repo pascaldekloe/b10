@@ -41,7 +41,7 @@ pub type Quecto = BaseCount<-30>;
 /// 3 counts per thousand, and -2 counts with two fractions.
 ///
 /// ```
-/// let cents = decimal::BaseCount::<-2>::from(199);
+/// let cents = b10::BaseCount::<-2>::from(199);
 /// assert_eq!("€ 1.99", format!("€ {cents}"));
 /// ```
 #[derive(Clone, Copy, PartialEq)]
@@ -59,7 +59,7 @@ impl<const EXP: i8> Default for BaseCount<EXP> {
 /// Count Adoption
 ///
 /// ```
-/// let degrees = decimal::Deci::from(192);
+/// let degrees = b10::Deci::from(192);
 /// assert_eq!("19.2 ℃", format!("{degrees} ℃"));
 /// ```
 impl<const EXP: i8> From<u64> for BaseCount<EXP> {
@@ -72,7 +72,7 @@ impl<const EXP: i8> From<u64> for BaseCount<EXP> {
 /// Count Extraction
 ///
 /// ```
-/// type Century = decimal::BaseCount::<2>;
+/// type Century = b10::BaseCount::<2>;
 /// let last = Century::map_n(1900).unwrap();
 /// assert_eq!(19, u64::from(last));
 /// ```
@@ -99,7 +99,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// in range `Self::MAX`.
     ///
     /// ```
-    /// use decimal::{Centi, Kilo};
+    /// use b10::{Centi, Kilo};
     /// assert_eq!(Some(Centi::from(200)), Centi::map_n(2));
     /// assert_eq!(Some(Kilo::from(5)), Kilo::map_n(5000));
     ///
@@ -117,7 +117,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// range `BaseCount::<R>::MAX`.
     ///
     /// ```
-    /// use decimal::{Centi, Kilo};
+    /// use b10::{Centi, Kilo};
     /// assert_eq!(Some(Centi::from(700_000)), Kilo::from(7).rebase());
     /// assert_eq!(Some(Kilo::from(7)), Centi::from(700_000).rebase());
     /// ```
@@ -283,7 +283,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// self × multiplicant = product + (overflow × 2^64).
     ///
     /// ```
-    /// use decimal::{Milli, Nano, Pico};
+    /// use b10::{Milli, Nano, Pico};
     ///
     /// let mA = Milli::from(100);
     /// let ns = Nano::from(4);
@@ -411,22 +411,22 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// ```
     /// # use std::io::Read;
     /// let label = b"1.44 MB";
-    /// let (value, size) = decimal::Centi::parse(label);
+    /// let (value, size) = b10::Centi::parse(label);
     /// if size >= label.len() || label[size] != b' ' {
     ///     panic!("read {size} bytes of label");
     /// }
-    /// assert_eq!(decimal::Centi::from(144), value);
+    /// assert_eq!(b10::Centi::from(144), value);
     /// assert_eq!(b" MB", &label[size..]);
     ///
     /// // Fewer digits than the actual resultion is permitted.
-    /// assert_eq!((50.into(), 3), decimal::Centi::parse(b"0.5"));
+    /// assert_eq!((50.into(), 3), b10::Centi::parse(b"0.5"));
     /// // stop reading beyond the resultion
-    /// assert_eq!((50.into(), 4), decimal::Centi::parse(b"0.500"));
+    /// assert_eq!((50.into(), 4), b10::Centi::parse(b"0.500"));
     ///
     /// // The trailing zeroes exactly match one kilo.
-    /// assert_eq!((1.into(), 4), decimal::Kilo::parse(b"1000"));
+    /// assert_eq!((1.into(), 4), b10::Kilo::parse(b"1000"));
     /// // Values outside the base resolution get rejected.
-    /// assert_eq!((0.into(), 0), decimal::Kilo::parse(b"1024"));
+    /// assert_eq!((0.into(), 0), b10::Kilo::parse(b"1024"));
     /// ```
     ///
     /// Parse is robust against malicious input. No assumptions are made on the
