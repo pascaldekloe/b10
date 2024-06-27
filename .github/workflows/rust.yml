@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Nightly Toolchain
+      run: rustup toolchain install nightly
     - uses: actions/checkout@v4
     - name: Test
       run: cargo +nightly test
