@@ -1,8 +1,14 @@
 [package]
 name = "b10"
+
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Lossless handling of decimal numbers at maximum performance."
+license = "CC0-1.0"
+
+readme = "README.md"
+homepage = "https://github.com/pascaldekloe/b10"
+repository = "https://github.com/pascaldekloe/b10"
 
 [dependencies]
