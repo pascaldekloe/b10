@@ -1,16 +1,37 @@
 ## Decimal Numbers For The Rust Programming Language
 
-The API provides intuitive and reliable operations at maximum performance. Both
-parse and format options strictly preserve the numeric values during conversion.
-Aritmetic operations are lossless by design. Numeric overflows are all included
-in the result, and there is no rounding unless explictly mentioned otherwise.
+The API provides a light-weight alternative to arbitrary-precision arithmetic.
+The `const` generics for base-ten exponents fix the computation steps involved
+at compile time. You basicaly get the speed of 64-bit primitives combined with
+the safety from big-number implementations.
 
- * Values in 64 bits instead of arbitrary-precision
- * Precissions/resolutions fixed with `const` generics
- * Maximised compile-time computation (with generics)
+```rust
+let cents = b10::BaseCount::<-2>::from(199);
+assert_eq!("€ 1.99", format!("€ {cents}"));
+```
+
+Parsing, formatting and calculation all is losses by design (unless explicitly
+stated otherwise in the method name).
+
+
+```rust
+// metric prefixes
+use b10::{Milli, Nano, Pico};
+
+// instantiate SI units
+let mA = Milli::from(100);
+let ns = Nano::from(4);
+
+// multiply into another base
+let (pC, overflow):(Pico, Pico) = mA.product(ns);
+if overflow != Pico::ZERO {
+    panic!("product exceeds 2⁶⁴ − 1 pico");
+}
+
+// pretty formatting options
+assert_eq!("100E-3 × 4E-9 = 400E-12",
+    format!("{mA:E} × {ns:E} = {pC:E}"));
+```
 
 This is free and unencumbered software released into the
 [public domain](https://creativecommons.org/publicdomain/zero/1.0).
-
-🚧 No stable release yet. The code base is a learning exercise for Rust in alpha
-stage. 🚨
