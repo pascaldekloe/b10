@@ -2,7 +2,6 @@
 #![feature(ascii_char_variants)]
 #![feature(bigint_helper_methods)]
 #![feature(strict_overflow_ops)]
-#![feature(const_strict_overflow_ops)]
 
 use std::ascii::Char;
 use std::convert::From;
@@ -376,7 +375,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     }
 
     /// Read a numeric value from a JSON fragment until it finds either a
-    /// ',', a '}' or a ']'. Trailing whitespace is ignored. The return is
+    /// `,`, a `}` or a `]`. Trailing whitespace is ignored. The return is
     /// zero on error encounters.
     pub fn parse_json(fragment: &[u8]) -> (Self, usize) {
         let (c, mut i) = Self::parse(fragment);
