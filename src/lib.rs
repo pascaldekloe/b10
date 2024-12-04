@@ -93,27 +93,25 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// The largest numeric value in range is `u64::MAX` times `Self::MIN`.
     pub const MAX: Self = Self { c: u64::MAX };
 
-    /// Get the numeric value if, and only if an exact match with
-    /// the base exponent exists, and if, and only if the value is
-    /// in range `Self::MAX`.
+    /// Get numeric value n iff an exact match within the base exponent exits,
+    /// and iff the numeric value is in range `Self::MAX`.
     ///
     /// ```
     /// use b10::{Centi, Kilo};
     /// assert_eq!(Some(Centi::from(200)), Centi::map_n(2));
     /// assert_eq!(Some(Kilo::from(5)), Kilo::map_n(5000));
     ///
-    /// // overflow protection
+    /// // range protection
     /// assert_eq!(None, Centi::map_n(u64::MAX));
-    /// // underflow protection
+    /// // loss-of-precision protection
     /// assert_eq!(None, Kilo::map_n(5100));
     /// ```
     pub fn map_n(n: u64) -> Option<Self> {
         Natural::from(n).rebase()
     }
 
-    /// Get the same numeric value under base exponent R if, and only
-    /// if an exact match exists, and if, and only if the value is in
-    /// range `BaseCount::<R>::MAX`.
+    /// Get the same numeric value under base exponent R iff an exact match
+    /// exists, and iff the numeric value is in range `BaseCount<R>::MAX`.
     ///
     /// ```
     /// use b10::{Centi, Kilo};
@@ -368,15 +366,16 @@ static DOUBLE_DIGIT_TABLE: [Char; 200] = [
 
 /// Textual Representation
 impl<const EXP: i8> BaseCount<EXP> {
-    /// Require `parse` to consume the text in full.
+    /// Require `parse` to consume the text in full. As such, the Option always
+    /// is an exact reading of the numeric value in text.
     pub fn parse_all(text: &[u8]) -> Option<Self> {
         let (c, read) = Self::parse(text);
         return if read < text.len() { None } else { Some(c) };
     }
 
-    /// Read a numeric value from a JSON fragment until it finds either a
-    /// `,`, a `}` or a `]`. Trailing whitespace is ignored. The return is
-    /// zero on error encounters.
+    /// Read a numeric value from a JSON fragment until it finds either an ASCII
+    /// comma (","), a closing brace ("}"), or a closing bracket ("]"). Trailing
+    /// whitespace is ignored. The return is zero on error encounters.
     pub fn parse_json(fragment: &[u8]) -> (Self, usize) {
         let (c, mut i) = Self::parse(fragment);
         return loop {
@@ -399,23 +398,24 @@ impl<const EXP: i8> BaseCount<EXP> {
         };
     }
 
-    /// Get an exact reading of the numeric value in text with the dot character
-    /// ('.') as a decimal separator, if any. Parsing may stop before the end of
-    /// text. It is the caller's responsibility to verify the read count against
-    /// expectations.
+    /// Get an exact reading of the numeric value at the start of text. The
+    /// `usize` in return has the number of octets parsed, which can be less
+    /// than the text size. Use `parse_all` to ensure a full reading instead.
     ///
-    /// The number of octets read in return (as `usize`) is zero on error, which
-    /// includes any form of precission loss, like rounding or range exhaustion.
+    /// ASCII character "." (0x2E) is recognised as a decimal separator. ASCII
+    /// character "E" (0x45) and "e" (0x65) are both accepted for E notation.
+    /// The following cases get rejected with a read count of zero.
+    ///
+    ///  * Values over Self::MAX (range exhaustion)
+    ///  * Resolutions beyond Self::MIN (loss of precision)
+    ///  * Leading zeroes other than plain zero "0" or a fractional "0."…
     ///
     /// ```
     /// # use std::io::Read;
     /// let label = b"1.44 MB";
     /// let (value, size) = b10::Centi::parse(label);
-    /// if size >= label.len() || label[size] != b' ' {
-    ///     panic!("read {size} bytes of label");
-    /// }
-    /// assert_eq!(b10::Centi::from(144), value);
     /// assert_eq!(b" MB", &label[size..]);
+    /// assert_eq!(b10::Centi::from(144), value);
     ///
     /// // Fewer digits than the actual resultion is permitted.
     /// assert_eq!((50.into(), 3), b10::Centi::parse(b"0.5"));
@@ -424,12 +424,12 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///
     /// // The trailing zeroes exactly match one kilo.
     /// assert_eq!((1.into(), 4), b10::Kilo::parse(b"1000"));
-    /// // Values outside the base resolution get rejected.
+    /// // Values beyond the base resolution get rejected.
     /// assert_eq!((0.into(), 0), b10::Kilo::parse(b"1024"));
     /// ```
     ///
-    /// Parse is robust against malicious input. No assumptions are made on the
-    /// byte content of text. The reading stops after 20 signifcant digits.
+    /// Parsing is robust against malicious input. No assumptions are made on
+    /// the byte content of text. Reading stops after 20 signifcant digits.
     pub fn parse(text: &[u8]) -> (Self, usize) {
         // check leading zero with more to come
         if text.len() > 1 && text[0] == b'0' {
