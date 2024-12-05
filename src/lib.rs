@@ -308,6 +308,26 @@ impl<const EXP: i8> BaseCount<EXP> {
             BaseCount::<P> { c: overflow },
         );
     }
+
+    /// Get the quotient and the remainder for divisor constant DIV.
+    ///
+    /// ```
+    /// use b10::Centi;
+    ///
+    /// let price = Centi::from(299);
+    /// let (half, remainder) = price.quotient_const::<2>();
+    /// assert_eq!("½ of 2.99 is 1.49 with 0.01 remaining",
+    ///     format!("½ of {price} is {half} with {remainder} remaining"));
+    /// ```
+    #[inline(always)]
+    pub fn quotient_const<const DIV: u64>(self) -> (Self, Self) {
+        const {
+            if DIV == 0 {
+                panic!("zero divisor denied");
+            }
+        }
+        return (Self { c: self.c / DIV }, Self { c: self.c % DIV });
+    }
 }
 
 #[cfg(test)]
