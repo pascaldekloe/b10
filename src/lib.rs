@@ -782,7 +782,7 @@ impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
         let (buf, i) = self.count_digits();
 
         if const { EXP == 0 } {
-            f.write_str(buf[i..].as_str())?;
+            return f.write_str(buf[i..].as_str());
         }
 
         if const { EXP < -19 } {
