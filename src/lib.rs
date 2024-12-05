@@ -98,6 +98,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///
     /// ```
     /// use b10::{Centi, Kilo};
+    ///
     /// assert_eq!(Some(Centi::from(200)), Centi::map_n(2));
     /// assert_eq!(Some(Kilo::from(5)), Kilo::map_n(5000));
     ///
@@ -115,6 +116,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///
     /// ```
     /// use b10::{Centi, Kilo};
+    ///
     /// assert_eq!(Some(Centi::from(700_000)), Kilo::from(7).rebase());
     /// assert_eq!(Some(Kilo::from(7)), Centi::from(700_000).rebase());
     /// ```
@@ -309,6 +311,38 @@ impl<const EXP: i8> BaseCount<EXP> {
         );
     }
 
+    /// Get the quotient and the remainder for divisor, with None for division
+    /// by zero. Q must greater or equal to EXP. The constraint prevents numeric
+    /// overflows by design.
+    ///
+    /// ```
+    /// use b10::{Centi, Deca, Natural};
+    ///
+    /// let price = Centi::from(100042);
+    /// let fifty = Natural::from(50);
+    /// let (part, rem) = price.quotient_int(fifty).unwrap();
+    ///
+    /// assert_eq!("1000.42 ÷ 50 is 20 with 0.42 remaining",
+    ///     format!("{price} ÷ {fifty} is {part} with {rem} remaining"));
+    /// ```
+    #[inline(always)]
+    pub fn quotient_int<const D: i8>(self, divisor: BaseCount<D>) -> Option<(u64, Self)> {
+        const {
+            if D < EXP {
+                // could cause numeric overflows
+                panic!("divisor exponent smaller than divident exponent");
+            }
+        }
+        if divisor.c == 0 {
+            return None;
+        }
+        match divisor.rebase::<EXP>() {
+            None => Some((0, self)), // divisor is greater than self
+
+            Some(d) => Some((self.c / d.c, Self { c: self.c % d.c })),
+        }
+    }
+
     /// Get the quotient and the remainder for divisor constant DIV.
     ///
     /// ```
@@ -316,6 +350,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///
     /// let price = Centi::from(299);
     /// let (half, remainder) = price.quotient_const::<2>();
+    ///
     /// assert_eq!("½ of 2.99 is 1.49 with 0.01 remaining",
     ///     format!("½ of {price} is {half} with {remainder} remaining"));
     /// ```
@@ -345,6 +380,34 @@ mod arithmetic_tests {
             (Natural::from(6), Natural::ZERO),
             Natural::from(2).product(Natural::from(3))
         );
+    }
+
+    // quotient reversed with product plus remainder
+    #[test]
+    fn consistency() {
+        let a: [u64; 7] = [0, 0, 1, 42, u64::MAX, 200, 5000];
+        let b: [u64; 7] = [0, 1, 0, u64::MAX, 42, 20, 17];
+        for i in 0..a.len() {
+            let da = Deci::from(a[i]);
+            let db = Deca::from(b[i]);
+
+            match da.quotient_int(db) {
+                None => assert_eq!(db, Deca::ZERO),
+                Some((quot, rem)) => {
+                    assert_ne!(db, Deca::ZERO);
+                    println!("{da} ÷ {db} got {quot} with {rem} remaining");
+
+                    let (prod, over) = Natural::from(quot).product::<1, 1>(db);
+                    println!("{quot} × {db} got {prod} + {over} × 2⁶⁴");
+                    assert_eq!(over, Deca::ZERO);
+
+                    let (sum, carry) = prod.rebase::<-1>().unwrap().sum(rem);
+                    println!("{prod} × {rem} got {sum} with carry {carry}");
+                    assert_eq!(sum, da);
+                    assert!(!carry);
+                }
+            };
+        }
     }
 }
 
