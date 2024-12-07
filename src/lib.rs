@@ -873,15 +873,13 @@ mod text_tests {
     }
 }
 
+/// Display the number in plain-decimal notation.
 impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.c == 0 {
             return f.write_str("0");
         }
-
-        if const { EXP > 0 } {
-            return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f);
-        }
+        let (buf, lzc) = self.count_digits();
 
         fn write_n_zeroes(f: &mut fmt::Formatter<'_>, mut n: usize) -> fmt::Result {
             static ZEROES: [Char; 32] = [Char::Digit0; 32];
@@ -895,27 +893,86 @@ impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
             Ok(())
         }
 
-        let (buf, i) = self.count_digits();
-
-        if const { EXP == 0 } {
-            return f.write_str(buf[i..].as_str());
+        match EXP {
+            0 => f.write_str(buf[lzc..].as_str()),
+            1.. => {
+                f.write_str(buf[lzc..].as_str())?;
+                write_n_zeroes(f, EXP as usize)
+            }
+            -20 => {
+                f.write_str("0.")?;
+                f.write_str(buf.as_str())
+            }
+            ..-20 => {
+                f.write_str("0.")?;
+                write_n_zeroes(f, (-20 - EXP) as usize)?;
+                f.write_str(buf.as_str())
+            }
+            -19..0 => {
+                let dec_sep = const { EXP + 20 } as usize;
+                if lzc < dec_sep {
+                    f.write_str(buf[lzc..dec_sep].as_str())?;
+                    f.write_str(".")?;
+                } else {
+                    f.write_str("0.")?;
+                }
+                f.write_str(buf[dec_sep..].as_str())
+            }
         }
+    }
+}
 
-        if const { EXP < -19 } {
-            f.write_str("0.")?;
-            write_n_zeroes(f, (-20 - EXP) as usize)?;
-            return f.write_str(buf.as_str());
-        }
+#[cfg(test)]
+mod display_tests {
+    use super::*;
 
-        assert!(const { EXP < 0 && EXP > -20 });
+    #[test]
+    #[rustfmt::skip]
+    fn single_digit() {
+        assert_eq!("1", format!("{}", BaseCount::<0>::from(1)));
 
-        if i < const { (EXP + 20) as usize } {
-            f.write_str(buf[i..const { (EXP + 20) as usize }].as_str())?;
-            f.write_str(".")?;
-        } else {
-            f.write_str("0.")?;
-        }
-        return f.write_str(buf[const { (EXP + 20) as usize }..].as_str());
+        assert_eq!("20", format!("{}", BaseCount::<1>::from(2)));
+        assert_eq!("300", format!("{}", BaseCount::<2>::from(3)));
+        assert_eq!("70000000000000000000", format!("{}", BaseCount::<19>::from(7)));
+        assert_eq!("800000000000000000000", format!("{}", BaseCount::<20>::from(8)));
+        assert_eq!("9000000000000000000000", format!("{}", BaseCount::<21>::from(9)));
+
+        assert_eq!("0.2", format!("{}", BaseCount::<-1>::from(2)));
+        assert_eq!("0.03", format!("{}", BaseCount::<-2>::from(3)));
+        assert_eq!("0.0000000000000000007", format!("{}", BaseCount::<-19>::from(7)));
+        assert_eq!("0.00000000000000000008", format!("{}", BaseCount::<-20>::from(8)));
+        assert_eq!("0.000000000000000000009", format!("{}", BaseCount::<-21>::from(9)));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn decimal_slide() {
+        // 20 digits with leading zero
+        let n = 12345678901234567890;
+        assert_eq!("1234567890123456789000", format!("{}", BaseCount::<2>::from(n)));
+        assert_eq!("123456789012345678900", format!("{}", BaseCount::<1>::from(n)));
+        assert_eq!("12345678901234567890", format!("{}", BaseCount::<0>::from(n)));
+        assert_eq!("1234567890123456789.0", format!("{}", BaseCount::<-1>::from(n)));
+        assert_eq!("123456789012345678.90", format!("{}", BaseCount::<-2>::from(n)));
+        assert_eq!("12345678901234567.890", format!("{}", BaseCount::<-3>::from(n)));
+        assert_eq!("1234567890123456.7890", format!("{}", BaseCount::<-4>::from(n)));
+        assert_eq!("123456789012345.67890", format!("{}", BaseCount::<-5>::from(n)));
+        assert_eq!("12345678901234.567890", format!("{}", BaseCount::<-6>::from(n)));
+        assert_eq!("1234567890123.4567890", format!("{}", BaseCount::<-7>::from(n)));
+        assert_eq!("123456789012.34567890", format!("{}", BaseCount::<-8>::from(n)));
+        assert_eq!("12345678901.234567890", format!("{}", BaseCount::<-9>::from(n)));
+        assert_eq!("1234567890.1234567890", format!("{}", BaseCount::<-10>::from(n)));
+        assert_eq!("123456789.01234567890", format!("{}", BaseCount::<-11>::from(n)));
+        assert_eq!("12345678.901234567890", format!("{}", BaseCount::<-12>::from(n)));
+        assert_eq!("1234567.8901234567890", format!("{}", BaseCount::<-13>::from(n)));
+        assert_eq!("123456.78901234567890", format!("{}", BaseCount::<-14>::from(n)));
+        assert_eq!("12345.678901234567890", format!("{}", BaseCount::<-15>::from(n)));
+        assert_eq!("1234.5678901234567890", format!("{}", BaseCount::<-16>::from(n)));
+        assert_eq!("123.45678901234567890", format!("{}", BaseCount::<-17>::from(n)));
+        assert_eq!("12.345678901234567890", format!("{}", BaseCount::<-18>::from(n)));
+        assert_eq!("1.2345678901234567890", format!("{}", BaseCount::<-19>::from(n)));
+        assert_eq!("0.12345678901234567890", format!("{}", BaseCount::<-20>::from(n)));
+        assert_eq!("0.012345678901234567890", format!("{}", BaseCount::<-21>::from(n)));
     }
 }
 
