@@ -312,11 +312,11 @@ impl<const EXP: i8> BaseCount<EXP> {
     }
 
     /// Get the quotient and the remainder for divisor, with None for division
-    /// by zero. Q must greater or equal to EXP. The constraint prevents numeric
+    /// by zero. D must greater or equal to EXP. The constraint prevents numeric
     /// overflows by design.
     ///
     /// ```
-    /// use b10::{Centi, Deca, Natural};
+    /// use b10::{Centi, Natural};
     ///
     /// let price = Centi::from(100042);
     /// let fifty = Natural::from(50);
