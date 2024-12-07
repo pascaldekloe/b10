@@ -423,7 +423,7 @@ const D7: Char = Char::Digit7;
 const D8: Char = Char::Digit8;
 const D9: Char = Char::Digit9;
 
-// lookup table for decimal "00" up until "99".
+// lookup table for decimal "00" up until "99"
 static DOUBLE_DIGIT_TABLE: [Char; 200] = [
     D0, D0, D0, D1, D0, D2, D0, D3, D0, D4, // "00".."04"
     D0, D5, D0, D6, D0, D7, D0, D8, D0, D9, // "05".."09"
@@ -716,20 +716,23 @@ impl<const EXP: i8> BaseCount<EXP> {
     }
 
     /// Format the integer value as ASCII with leading zeroes.
-    /// The usize return counts the number of leading zeroes,
-    /// which can be up to 20 for Self::ZERO.
+    /// The usize return counts the number of leading zeroes.
+    /// Self::ZERO needs separate handling without count_digits.
     fn count_digits(&self) -> ([Char; 20], usize) {
-        // Initialize the result as "00000000000000000000".
+        debug_assert_ne!(self.c, 0);
+
+        // initialize result as "00000000000000000000"
         let mut buf: [Char; 20] = [Char::Digit0; 20];
-        // The leading zero count equals the write index.
+        // leading zero count equals write index
         let mut i = buf.len();
 
-        let mut v = self.c;
+        // format backwards; least significant first
+        let mut remain = self.c;
 
         // print per two digits
-        while v > 9 {
-            let p = (v % 100) as usize * 2;
-            v /= 100;
+        while remain > 9 {
+            let p = (remain % 100) as usize * 2;
+            remain /= 100;
 
             i -= 2;
             buf[i + 0] = DOUBLE_DIGIT_TABLE[p + 0];
@@ -737,8 +740,11 @@ impl<const EXP: i8> BaseCount<EXP> {
         }
 
         // print remainder digit, if any
-        if v != 0 {
-            let p = (v as usize * 2) + 1;
+        if remain != 0 {
+            assert!(remain < 10);
+            let p = (remain as usize * 2) + 1;
+            remain = 0; // redundant
+
             i -= 1;
             buf[i] = DOUBLE_DIGIT_TABLE[p];
         }
@@ -837,6 +843,33 @@ mod text_tests {
         assert_eq!((BaseCount::<-14>::ZERO, 0), BaseCount::parse(text));
         assert_eq!((BaseCount::<-15>::ZERO, 0), BaseCount::parse(text));
         assert_eq!((BaseCount::<-30>::ZERO, 0), BaseCount::parse(text));
+    }
+
+    // Verify the DOUBLE_DIGIT_TABLE content in full.
+    #[test]
+    fn count_digits() {
+        // don't care about special case 0 as it is not used
+        for i in 1..102 {
+            let (buf, lzc) = Natural::from(i).count_digits();
+
+            let text = buf[..].as_str();
+            match text.parse::<u64>() {
+                Err(e) => assert!(false, "got {} for {}: {}", text, i, e),
+                Ok(v) => assert_eq!(v, i, "got {} for {}", text, i),
+            };
+
+            let dec_n: usize = i.ilog10() as usize + 1;
+            let want_lzc = buf.len() - dec_n;
+            assert_eq!(lzc, want_lzc, "leading-zero count for {}", text);
+        }
+
+        let (buf_max, lzc_max) = Natural::from(u64::MAX).count_digits();
+        assert_eq!("18446744073709551615", buf_max.as_str());
+        assert_eq!(0, lzc_max);
+
+        let (buf_tz, lzc_tz) = Natural::from(1_000_000_000_000_000_000).count_digits();
+        assert_eq!("01000000000000000000", buf_tz.as_str());
+        assert_eq!(1, lzc_tz);
     }
 }
 
