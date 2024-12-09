@@ -483,236 +483,164 @@ impl<const EXP: i8> BaseCount<EXP> {
 
     /// Get an exact reading of the numeric value at the start of text. The
     /// `usize` in return has the number of octets parsed, which can be less
-    /// than the text size. Use `parse_all` to ensure a full reading instead.
+    /// than slice length. Use `parse_all` to ensure a full reading instead.
+    /// Parsing is robust against malicious input. No assumptions are made on
+    /// the content of text.
     ///
     /// ASCII character "." (0x2E) is recognised as a decimal separator. ASCII
     /// character "E" (0x45) and "e" (0x65) are both accepted for E notation.
-    /// The following cases get rejected with a read count of zero.
+    /// Non-significant digits (a.k.a. leading zeroes) are ignored/permitted.
+    /// The following cases get rejected with a zero usize.
     ///
-    ///  * Values over Self::MAX (range exhaustion)
-    ///  * Resolutions beyond Self::MIN (loss of precision)
-    ///  * Leading zeroes other than plain zero "0" or a fractional "0."…
+    ///  * No input: empty text slice
+    ///  * Range exhaustion: any numeric value over Self::MAX
+    ///  * Beyond resolution: significant digits under Self::MIN
+    ///
     ///
     /// ```
     /// # use std::io::Read;
     /// let label = b"1.44 MB";
-    /// let (value, size) = b10::Centi::parse(label);
-    /// assert_eq!(b" MB", &label[size..]);
-    /// assert_eq!(b10::Centi::from(144), value);
+    /// // micro resolution of mega value to count bytes
+    /// let (read_v, read_n) = b10::Micro::parse(label);
+    /// // verify parse together with unit expectation
+    /// assert_eq!(b" MB", &label[read_n..]);
+    /// assert_eq!(b10::Micro::from(1_440_000), read_v);
     ///
-    /// // Fewer digits than the actual resultion is permitted.
-    /// assert_eq!((50.into(), 3), b10::Centi::parse(b"0.5"));
-    /// // stop reading beyond the resultion
-    /// assert_eq!((50.into(), 4), b10::Centi::parse(b"0.500"));
-    ///
-    /// // The trailing zeroes exactly match one kilo.
-    /// assert_eq!((1.into(), 4), b10::Kilo::parse(b"1000"));
-    /// // Values beyond the base resolution get rejected.
-    /// assert_eq!((0.into(), 0), b10::Kilo::parse(b"1024"));
+    /// // need E notation for EXP greater than zero
+    /// assert_eq!((b10::Kilo::from(500), 5), b10::Kilo::parse(b"5.0E5"));
+    /// // … because digits beyond the resolution are denied, even when zero
+    /// assert_eq!((b10::Kilo::ZERO, 0), b10::Kilo::parse(b"1000"));
+    /// assert_eq!((b10::Centi::ZERO, 0), b10::Centi::parse(b"0.500"));
     /// ```
-    ///
-    /// Parsing is robust against malicious input. No assumptions are made on
-    /// the byte content of text. Reading stops after 20 signifcant digits.
     pub fn parse(text: &[u8]) -> (Self, usize) {
-        // check leading zero with more to come
-        if text.len() > 1 && text[0] == b'0' {
-            return match text[1] {
-                // deny redundant zeroes
-                b'0'..=b'9' => (Self::ZERO, 0),
-
-                // decimal separator
-                b'.' => Self::at_fraction(text, 2, 0),
-
-                b'e' | b'E' => Self::ZERO.at_exponent(text, 2),
-
-                // allow plain zero regardless of base exponent
-                _ => (Self::ZERO, 1),
-            };
-        }
-
-        // read index in text
-        let mut i: usize = 0;
-
-        // read integer digits into v
-        let mut v: u64 = 0;
-        return loop {
-            if i < text.len() {
-                match text[i] {
-                    b'0'..=b'9' => {
-                        let decimal = decimal_of(text[i]);
-
-                        // limit of 64 bits is 18_446_744_073_709_551_615
-                        if i > 19 {
-                            if decimal > 5 || v > u64::MAX / 10 {
-                                // numeric overflow
-                                break (Self::ZERO, 0);
-                            }
-
-                            // can apply the 20th digit safely now
-                            assert_eq!(19, i);
-                        }
-
-                        v = (v * 10) + decimal;
-
-                        // 🔁 next character
-                        i += 1;
-                        continue;
-                    }
-
-                    b'.' => break Self::at_fraction(text, i + 1, v),
-
-                    b'e' | b'E' => break Self { c: v }.at_exponent(text, i + 1),
-
-                    // stop parsing
-                    _ => {}
-                }
-            }
-
-            break match Self::map_n(v) {
-                Some(c) => (c, i),
-                None => (Self::ZERO, 0),
-            };
-        };
-    }
-
-    /// Check for an exact match with the base number.
-    /// TODO: Should less precise bases be permitted?
-    fn at_exponent(self, text: &[u8], mut i: usize) -> (Self, usize) {
-        if EXP < 0 {
-            if i >= text.len() || text[i] != b'-' {
-                return (Self::ZERO, 0);
-            }
-            i += 1;
-        }
-        // TODO: Should we tolerate redundant '+' in exponent?
-        // TODO: How about "E-0" and "E+0"?
-
-        let same_as_base = if const { EXP > -10 && EXP < 10 } {
-            i < text.len() && text[i + 0] == const { b'0' + (EXP.abs_diff(0) % 10) }
-        } else if const { EXP > -100 && EXP < 100 } {
-            i + 1 < text.len()
-                && text[i + 0] == const { b'0' + ((EXP.abs_diff(0) / 10) % 10) }
-                && text[i + 1] == const { b'0' + ((EXP.abs_diff(0) / 1) % 10) }
-        } else {
-            i + 2 < text.len()
-                && text[i + 0] == const { b'0' + ((EXP.abs_diff(0) / 100) % 10) }
-                && text[i + 1] == const { b'0' + ((EXP.abs_diff(0) / 10) % 10) }
-                && text[i + 2] == const { b'0' + ((EXP.abs_diff(0) / 1) % 10) }
-        };
-
-        let exp_dig_n = const {
-            if EXP > -10 && EXP < 10 {
-                1
-            } else if EXP > -100 && EXP < 100 {
-                2
-            } else {
-                3
-            }
-        };
-        return if same_as_base {
-            (self, i + exp_dig_n)
-        } else {
-            (Self::ZERO, 0)
-        };
-    }
-
-    /// Continue parsing text after seeing the decimal separator at text[i - 1].
-    /// The (integer) value v parsed thus far may be out of bounds.
-    /// TODO: Permit fractions with an exponent.
-    fn at_fraction(text: &[u8], start: usize, int_part: u64) -> (Self, usize) {
-        // generic case with no fractional digits
-        if const { EXP >= 0 } {
+        // read number with optional E notation
+        let (int, exp, parse_len) = Self::parse_as_int_exp(text);
+        if parse_len == 0 {
             return (Self::ZERO, 0);
         }
 
-        // generic case with an integer component
-        if const { EXP > -20 } {
-            let mut i = start; // read index in text
-            let end = start + const { (EXP as isize).strict_neg() as usize };
+        // rebase int/exp to generic EXP
+        let count: Option<u64> = match exp - const { EXP as isize } {
+            0 => Some(int),
+            1 => int.checked_mul(10),
+            2 => int.checked_mul(100),
+            3 => int.checked_mul(1000),
+            4 => int.checked_mul(10000),
+            5 => int.checked_mul(100000),
+            6 => int.checked_mul(1000000),
+            7 => int.checked_mul(10000000),
+            8 => int.checked_mul(100000000),
+            9 => int.checked_mul(1000000000),
+            10 => int.checked_mul(10000000000),
+            11 => int.checked_mul(100000000000),
+            12 => int.checked_mul(1000000000000),
+            13 => int.checked_mul(10000000000000),
+            14 => int.checked_mul(100000000000000),
+            15 => int.checked_mul(1000000000000000),
+            16 => int.checked_mul(10000000000000000),
+            17 => int.checked_mul(100000000000000000),
+            18 => int.checked_mul(1000000000000000000),
+            19 => int.checked_mul(10000000000000000000),
 
-            // parse fractiononal value separately
-            let mut frac_part: u64 = 0;
-            // up to 19 digits can't overflow 64 bits
-            while i < end {
-                if i >= text.len() || !(b'0'..=b'9').contains(&text[i]) {
-                    // TODO: lookup table
-                    frac_part *= 10u64.pow((end - i) as u32);
-                    break;
-                }
-                frac_part = frac_part * 10 + decimal_of(text[i]);
-                i += 1;
-            }
+            // beyond resolution is not permitted
+            ..0 => None,
 
-            let one = const {
-                // redundant check needed for compiler
-                if EXP < 0 && EXP > -20 {
-                    let frac_n = (EXP as isize).strict_neg();
-                    10u64.strict_pow(frac_n as u32)
+            // only non-significant digits permitted
+            20.. => {
+                if int == 0 {
+                    Some(0)
                 } else {
-                    // not possible in this branch
-                    42u64 // arbitrary placeholder
+                    None
                 }
-            };
-            let (count, carry) = one.carrying_mul(int_part, frac_part);
-            return if carry == 0 {
-                (count.into(), i)
-            } else {
-                (Self::ZERO, 0) // out of bounds
-            };
-        }
-
-        // generic case with only fractional digits
-        assert!(const { EXP < -19 });
-        if int_part != 0 {
-            return (Self::ZERO, 0); // out of bounds
-        }
-        // digit positions in text are all at a fixed location
-        debug_assert_eq!(start, "0.".len());
-        let end = const {
-            // redundant check needed for compiler
-            if EXP < 0 {
-                "0.".len() + (EXP as isize).strict_neg() as usize
-            } else {
-                // not possible in this branch
-                42 // arbitrary placeholder
             }
         };
 
-        // pass mandatory zeroes, if EXP < -20
-        let zero_until = const { (EXP as isize + 18).strict_neg() as usize };
-        for i in 2..zero_until {
-            if i >= text.len() || !(b'0'..=b'9').contains(&text[i]) {
-                // non-siginificant fraction allowed
-                return (Self::ZERO, i);
-            }
-            if text[i] != b'0' {
-                // numeric overflow denied
-                return (Self::ZERO, 0);
-            }
+        match count {
+            None => (Self::ZERO, 0),
+            Some(n) => (Self { c: n }, parse_len),
         }
+    }
 
-        // Delay appliance of the most significant digit because
-        // the remaining 19 digits can't overflow 64 bits.
-        let first_digit = decimal_of(text[zero_until]);
-        let mut i = zero_until + 1; // read index
-        let mut v: u64 = 0; // parsed value
-        while i < end {
-            if i >= text.len() || !(b'0'..=b'9').contains(&text[i]) {
-                v *= 10u64.pow((end - i) as u32);
-                break;
+    /// Parse the number as an integer with a base-10 exponent. The usize in
+    /// return has the number of octets parsed from text with zero for none.
+    fn parse_as_int_exp(text: &[u8]) -> (u64, isize, usize) {
+        // parsed decimals
+        let mut num: u64 = 0;
+        // index of first decimal (with zero for none)
+        let mut fraction_offset: usize = 0;
+
+        // read index in text
+        let mut i: usize = 0;
+        while i < text.len() {
+            let c = text[i];
+
+            match c {
+                // decimal separator
+                b'.' => {
+                    if fraction_offset != 0 {
+                        // two separators
+                        return (0, 0, 0);
+                    }
+                    fraction_offset = i + 1;
+                }
+
+                b'0'..=b'9' => {
+                    let digit = c as u64 - b'0' as u64;
+                    if num >= u64::MAX / 10 && (num > u64::MAX / 10 || digit > 5) {
+                        // numeric overflow
+                        return (0, 0, 0);
+                    }
+                    num = num * 10 + digit;
+                }
+
+                _ => break,
             }
-            v = v * 10 + decimal_of(text[i]);
+
             i += 1;
         }
 
-        // merge most significant digit with overflow protection
-        let ms: u64 = 10_000_000_000_000_000_000;
-        let (count, carry) = ms.carrying_mul(first_digit, v);
-        return if carry == 0 {
-            (count.into(), i)
+        // exponent caused by fraction is negative, if any
+        let frac_exp: isize = if fraction_offset == 0 {
+            0 // without fraction
         } else {
-            (Self::ZERO, 0)
+            fraction_offset as isize - i as isize
         };
+
+        // maybe E notation
+        if i >= text.len() || (text[i] != b'E' && text[i] != b'e') {
+            // no E notation
+            return (num, frac_exp, i);
+        }
+        i += 1;
+
+        // maybe exponent sign
+        let mut exp_neg = false;
+        if i < text.len() && text[i] == b'-' {
+            exp_neg = true;
+            i += 1;
+        } else if i < text.len() && text[i] == b'+' {
+            // redudant sign permitted
+            i += 1;
+        }
+
+        // read exponent number
+        let mut exp_num: usize = 0;
+        while i < text.len() && text[i] >= b'0' && text[i] <= b'9' {
+            let digit = text[i] as usize - b'0' as usize;
+            i += 1;
+
+            exp_num = exp_num * 10 + digit;
+            if exp_num > 0xFFFF {
+                return (0, 0, 0);
+            }
+        }
+
+        let exp = if exp_neg {
+            frac_exp - exp_num as isize
+        } else {
+            frac_exp + exp_num as isize
+        };
+        (num, exp, i)
     }
 
     /// Format the integer value as ASCII with leading zeroes.
@@ -743,7 +671,7 @@ impl<const EXP: i8> BaseCount<EXP> {
         if remain != 0 {
             assert!(remain < 10);
             let p = (remain as usize * 2) + 1;
-            remain = 0; // redundant
+            // remain = 0; // redundant
 
             i -= 1;
             buf[i] = DOUBLE_DIGIT_TABLE[p];
@@ -758,91 +686,166 @@ mod text_tests {
     use super::*;
 
     #[test]
-    fn parse_zero() {
-        assert_eq!((BaseCount::<0>::ZERO, 0), BaseCount::parse(b""));
-        assert_eq!((BaseCount::<0>::ZERO, 1), BaseCount::parse(b"0"));
-        assert_eq!((BaseCount::<0>::ZERO, 3), BaseCount::parse(b"0E0"));
-        assert_eq!((BaseCount::<1>::ZERO, 3), BaseCount::parse(b"0E1"));
-        assert_eq!((BaseCount::<10>::ZERO, 4), BaseCount::parse(b"0E10"));
-        assert_eq!((BaseCount::<127>::ZERO, 5), BaseCount::parse(b"0E127"));
-        assert_eq!((BaseCount::<-1>::ZERO, 4), BaseCount::parse(b"0E-1"));
-        assert_eq!((BaseCount::<-10>::ZERO, 5), BaseCount::parse(b"0E-10"));
-        assert_eq!((BaseCount::<-128>::ZERO, 6), BaseCount::parse(b"0E-128"));
+    fn omission() {
+        assert_eq!((0.into(), 0), Milli::parse(b""), "no text");
+        assert_eq!((900.into(), 2), Milli::parse(b".9"), "no integer");
+        assert_eq!((9000.into(), 2), Milli::parse(b"9."), "no fraction");
+        assert_eq!((9000.into(), 2), Milli::parse(b"9E"), "no exponent");
+        assert_eq!((0.into(), 2), Milli::parse(b".E"), "no nothing");
     }
 
     #[test]
-    fn illegal_lead() {
-        assert_eq!((BaseCount::<0>::ZERO, 0), BaseCount::parse(b"00"));
-        assert_eq!((BaseCount::<0>::ZERO, 0), BaseCount::parse(b"01"));
-        assert_eq!((BaseCount::<0>::ZERO, 0), BaseCount::parse(b"00."));
-        assert_eq!((BaseCount::<0>::ZERO, 0), BaseCount::parse(b"01."));
-        assert_eq!((BaseCount::<0>::ZERO, 0), BaseCount::parse(b"00.0"));
-        assert_eq!((BaseCount::<0>::ZERO, 0), BaseCount::parse(b"01.0"));
-        assert_eq!((BaseCount::<0>::ZERO, 0), BaseCount::parse(b"00.1"));
-
-        assert_eq!((BaseCount::<1>::ZERO, 0), BaseCount::parse(b"00"));
-        assert_eq!((BaseCount::<1>::ZERO, 0), BaseCount::parse(b"01"));
-        assert_eq!((BaseCount::<1>::ZERO, 0), BaseCount::parse(b"00."));
-        assert_eq!((BaseCount::<1>::ZERO, 0), BaseCount::parse(b"01."));
-        assert_eq!((BaseCount::<1>::ZERO, 0), BaseCount::parse(b"00.0"));
-        assert_eq!((BaseCount::<1>::ZERO, 0), BaseCount::parse(b"01.0"));
-        assert_eq!((BaseCount::<1>::ZERO, 0), BaseCount::parse(b"00.1"));
-
-        assert_eq!((BaseCount::<-1>::ZERO, 0), BaseCount::parse(b""));
-        assert_eq!((BaseCount::<-1>::ZERO, 0), BaseCount::parse(b"00"));
-        assert_eq!((BaseCount::<-1>::ZERO, 0), BaseCount::parse(b"01"));
-        assert_eq!((BaseCount::<-1>::ZERO, 0), BaseCount::parse(b"00."));
-        assert_eq!((BaseCount::<-1>::ZERO, 0), BaseCount::parse(b"01."));
-        assert_eq!((BaseCount::<-1>::ZERO, 0), BaseCount::parse(b"00.0"));
-        assert_eq!((BaseCount::<-1>::ZERO, 0), BaseCount::parse(b"01.0"));
-        assert_eq!((BaseCount::<-1>::ZERO, 0), BaseCount::parse(b"00.1"));
-    }
-
-    #[test]
-    fn parse_integer() {
-        assert_eq!((BaseCount::<0>::from(123), 3), BaseCount::parse(b"123"));
-        assert_eq!((BaseCount::<-1>::from(1230), 3), BaseCount::parse(b"123"));
-        assert_eq!((BaseCount::<-2>::from(12300), 3), BaseCount::parse(b"123"));
-    }
-
-    #[test]
-    fn bases_of_one_million() {
+    fn one_million() {
         let text = b"1000000";
 
-        assert_eq!((BaseCount::<0>::from(1_000_000), 7), BaseCount::parse(text));
-        assert_eq!((BaseCount::<1>::from(100_000), 7), BaseCount::parse(text));
-        // …
-        assert_eq!((BaseCount::<5>::from(10), 7), BaseCount::parse(text));
-        assert_eq!((BaseCount::<6>::from(1), 7), BaseCount::parse(text));
+        assert_eq!((10u64.pow(6).into(), 7), BaseCount::<0>::parse(text));
 
-        // deny resolutions over one million
-        assert_eq!((BaseCount::<7>::ZERO, 0), BaseCount::parse(text));
-        assert_eq!((BaseCount::<8>::ZERO, 0), BaseCount::parse(text));
-        assert_eq!((BaseCount::<30>::ZERO, 0), BaseCount::parse(text));
-
-        // fractions permitted
-        assert_eq!(
-            (BaseCount::<-1>::from(10_000_000), 7),
-            BaseCount::parse(text)
-        );
-        assert_eq!(
-            (BaseCount::<-2>::from(100_000_000), 7),
-            BaseCount::parse(text)
-        );
+        // fractional base
+        assert_eq!((10u64.pow(7).into(), 7), BaseCount::<-1>::parse(text));
+        assert_eq!((10u64.pow(8).into(), 7), BaseCount::<-2>::parse(text));
         // …
-        assert_eq!(
-            (BaseCount::<-12>::from(1_000_000_000_000_000_000), 7),
-            BaseCount::parse(text)
-        );
-        assert_eq!(
-            (BaseCount::<-13>::from(10_000_000_000_000_000_000), 7),
-            BaseCount::parse(text)
-        );
+        assert_eq!((10u64.pow(18).into(), 7), BaseCount::<-12>::parse(text));
+        assert_eq!((10u64.pow(19).into(), 7), BaseCount::<-13>::parse(text));
 
         // exceed BaseCount::MAX with too many fractions
-        assert_eq!((BaseCount::<-14>::ZERO, 0), BaseCount::parse(text));
-        assert_eq!((BaseCount::<-15>::ZERO, 0), BaseCount::parse(text));
-        assert_eq!((BaseCount::<-30>::ZERO, 0), BaseCount::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<-14>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<-15>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<-99>::parse(text));
+
+        // significant digits beyond resolution
+        assert_eq!((0.into(), 0), BaseCount::<1>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<2>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<3>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<4>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<5>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<6>::parse(text));
+        // most-significant decimal exceeded
+        assert_eq!((0.into(), 0), BaseCount::<7>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<8>::parse(text));
+        assert_eq!((0.into(), 0), BaseCount::<99>::parse(text));
+    }
+
+    #[test]
+    fn e_notation() {
+        const E17: u64 = 10u64.pow(17);
+
+        // exact match
+        assert_eq!((42.into(), 4), BaseCount::<0>::parse(b"42E0"));
+        assert_eq!((42.into(), 5), BaseCount::<0>::parse(b"42E+0"));
+        assert_eq!((42.into(), 5), BaseCount::<0>::parse(b"42E-0"));
+        // above base
+        assert_eq!((420.into(), 5), BaseCount::<0>::parse(b"42E01"));
+        assert_eq!(((42 * E17).into(), 5), BaseCount::<0>::parse(b"42E17"));
+
+        // below base
+        assert_eq!((0.into(), 0), BaseCount::<0>::parse(b"42E-1"));
+        // numeric overflow
+        assert_eq!((0.into(), 0), BaseCount::<0>::parse(b"42E18"));
+
+        // high exponent
+        assert_eq!((42.into(), 5), BaseCount::<60>::parse(b"42E60"));
+        assert_eq!((42.into(), 6), BaseCount::<60>::parse(b"42E+60"));
+        assert_eq!((420.into(), 5), BaseCount::<60>::parse(b"42E61"));
+        assert_eq!(((42 * E17).into(), 5), BaseCount::<60>::parse(b"42E77"));
+        assert_eq!((0.into(), 0), BaseCount::<60>::parse(b"42E59"));
+        assert_eq!((0.into(), 0), BaseCount::<60>::parse(b"42E78"));
+
+        // low exponent
+        assert_eq!((42.into(), 6), BaseCount::<-60>::parse(b"42E-60"));
+        assert_eq!((420.into(), 6), BaseCount::<-60>::parse(b"42E-59"));
+        assert_eq!(((42 * E17).into(), 6), BaseCount::<-60>::parse(b"42E-43"));
+        assert_eq!((0.into(), 0), BaseCount::<-60>::parse(b"42E-61"));
+        assert_eq!((0.into(), 0), BaseCount::<-60>::parse(b"42E-42"));
+    }
+
+    #[test]
+    fn max() {
+        let b0 = b"18446744073709551615";
+        assert_eq!((u64::MAX.into(), b0.len()), BaseCount::<0>::parse(b0));
+        let b0l21 = b"00000000000000000000018446744073709551615";
+        assert_eq!((u64::MAX.into(), b0l21.len()), BaseCount::<0>::parse(b0l21));
+
+        let f1 = b"1844674407370955161.5";
+        assert_eq!((u64::MAX.into(), f1.len()), BaseCount::<-1>::parse(f1));
+        // …
+        let f19 = b"1.8446744073709551615";
+        assert_eq!((u64::MAX.into(), f19.len()), BaseCount::<-19>::parse(f19));
+        let f20 = b"0.18446744073709551615";
+        assert_eq!((u64::MAX.into(), f20.len()), BaseCount::<-20>::parse(f20));
+        let f21 = b"0.018446744073709551615";
+        assert_eq!((u64::MAX.into(), f21.len()), BaseCount::<-21>::parse(f21));
+        // …
+        let f39 = b"0.000000000000000000018446744073709551615";
+        assert_eq!((u64::MAX.into(), f39.len()), BaseCount::<-39>::parse(f39));
+        let f40 = b"0.0000000000000000000018446744073709551615";
+        assert_eq!((u64::MAX.into(), f40.len()), BaseCount::<-40>::parse(f40));
+        let f41 = b"0.00000000000000000000018446744073709551615";
+        assert_eq!((u64::MAX.into(), f41.len()), BaseCount::<-41>::parse(f41));
+
+        let b0e1 = b"18446744073709551615e1";
+        assert_eq!((u64::MAX.into(), b0e1.len()), BaseCount::<1>::parse(b0e1));
+        let f1e2 = b"1844674407370955161.5e2";
+        assert_eq!((u64::MAX.into(), f1e2.len()), BaseCount::<1>::parse(f1e2));
+        let f2e1 = b"184467440737095516.15e1";
+        assert_eq!((u64::MAX.into(), f2e1.len()), BaseCount::<-1>::parse(f2e1));
+        let f41e22n = b"0.00000000000000000000018446744073709551615e-22";
+        assert_eq!(
+            (u64::MAX.into(), f41e22n.len()),
+            BaseCount::<-63>::parse(f41e22n)
+        );
+        let f41e120 = b"0.00000000000000000000018446744073709551615e120";
+        assert_eq!(
+            (u64::MAX.into(), f41e120.len()),
+            BaseCount::<79>::parse(f41e120)
+        );
+    }
+
+    #[test]
+    fn parse_zero() {
+        let in_nano_range = [
+            "", "0", "00", "0.0", "00.0", "0.00", "00e00", "0.00e0", "00.00e-7",
+        ];
+
+        for s in in_nano_range {
+            let got = Nano::parse(s.as_bytes());
+            let want = (Nano::ZERO, s.len());
+            assert_eq!(want, got, "parse({})", s);
+        }
+
+        // 21 non-significant digits
+        let ke3 = Kilo::parse(b"000000000000000000000e3");
+        assert_eq!((Kilo::ZERO, 21 + 2), ke3);
+        let ke4 = Kilo::parse(b"000000000000000000000e4");
+        assert_eq!((Kilo::ZERO, 21 + 2), ke4);
+        assert_eq!((Milli::ZERO, 21), Milli::parse(b"000000000000000000000"));
+        let ne9 = Nano::parse(b"000000000000000000000e-9");
+        assert_eq!((Nano::ZERO, 21 + 3), ne9);
+        let ne8 = Nano::parse(b"000000000000000000000e-8");
+        assert_eq!((Nano::ZERO, 21 + 3), ne8);
+
+        // non-significant digits far out of range
+        let hi_res = BaseCount::<-128>::ZERO;
+        assert_eq!((hi_res, 3), BaseCount::parse(b"0.0"));
+        assert_eq!((hi_res, 5), BaseCount::parse(b"00.00"));
+        assert_eq!((hi_res, 23), BaseCount::parse(b"000000000000000000000.0"));
+        assert_eq!((hi_res, 23), BaseCount::parse(b"0.000000000000000000000"));
+    }
+
+    #[test]
+    fn trailing_zeroes() {
+        // deny trailing zeroes beyond resolution
+        assert_eq!((0.into(), 0), BaseCount::<1>::parse(b"700"));
+        assert_eq!((0.into(), 0), BaseCount::<2>::parse(b"700"));
+        assert_eq!((0.into(), 0), BaseCount::<2>::parse(b"70E1"));
+        assert_eq!((0.into(), 0), BaseCount::<0>::parse(b"7.0"));
+        assert_eq!((0.into(), 0), BaseCount::<0>::parse(b"7.0E0"));
+        assert_eq!((0.into(), 0), BaseCount::<0>::parse(b"7.00E1"));
+
+        // just within range
+        assert_eq!((70.into(), 5), BaseCount::<0>::parse(b"7.0E1"));
+        assert_eq!((70.into(), 5), BaseCount::<1>::parse(b"7.0E2"));
+        assert_eq!((70.into(), 6), BaseCount::<0>::parse(b"0.70E2"));
+        assert_eq!((70.into(), 6), BaseCount::<-1>::parse(b"7.0E-0"));
     }
 
     // Verify the DOUBLE_DIGIT_TABLE content in full.
@@ -874,8 +877,13 @@ mod text_tests {
 }
 
 /// Display the number in plain-decimal notation.
+/// Any EXP higher than zero causes E notation.
 impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if const { EXP > 0 } {
+            return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f);
+        }
+
         if self.c == 0 {
             return f.write_str("0");
         }
@@ -928,14 +936,14 @@ mod display_tests {
 
     #[test]
     #[rustfmt::skip]
-    fn single_digit() {
+    fn least_significant_digit() {
         assert_eq!("1", format!("{}", BaseCount::<0>::from(1)));
 
-        assert_eq!("20", format!("{}", BaseCount::<1>::from(2)));
-        assert_eq!("300", format!("{}", BaseCount::<2>::from(3)));
-        assert_eq!("70000000000000000000", format!("{}", BaseCount::<19>::from(7)));
-        assert_eq!("800000000000000000000", format!("{}", BaseCount::<20>::from(8)));
-        assert_eq!("9000000000000000000000", format!("{}", BaseCount::<21>::from(9)));
+        assert_eq!("2E1", format!("{}", BaseCount::<1>::from(2)));
+        assert_eq!("3E2", format!("{}", BaseCount::<2>::from(3)));
+        assert_eq!("7E19", format!("{}", BaseCount::<19>::from(7)));
+        assert_eq!("8E20", format!("{}", BaseCount::<20>::from(8)));
+        assert_eq!("9E21", format!("{}", BaseCount::<21>::from(9)));
 
         assert_eq!("0.2", format!("{}", BaseCount::<-1>::from(2)));
         assert_eq!("0.03", format!("{}", BaseCount::<-2>::from(3)));
@@ -949,8 +957,8 @@ mod display_tests {
     fn decimal_slide() {
         // 20 digits with leading zero
         let n = 12345678901234567890;
-        assert_eq!("1234567890123456789000", format!("{}", BaseCount::<2>::from(n)));
-        assert_eq!("123456789012345678900", format!("{}", BaseCount::<1>::from(n)));
+        assert_eq!("12345678901234567890E2", format!("{}", BaseCount::<2>::from(n)));
+        assert_eq!("12345678901234567890E1", format!("{}", BaseCount::<1>::from(n)));
         assert_eq!("12345678901234567890", format!("{}", BaseCount::<0>::from(n)));
         assert_eq!("1234567890123456789.0", format!("{}", BaseCount::<-1>::from(n)));
         assert_eq!("123456789012345678.90", format!("{}", BaseCount::<-2>::from(n)));
@@ -992,9 +1000,4 @@ impl<const EXP: i8> fmt::UpperExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{0}E{EXP}", self.c)
     }
-}
-
-#[inline(always)]
-fn decimal_of(c: u8) -> u64 {
-    return c as u64 - b'0' as u64;
 }
