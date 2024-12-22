@@ -11,7 +11,7 @@ assert_eq!("€ 1.99", format!("€ {cents}"));
 ```
 
 Parsing, formatting and calculation all is losses by design (unless explicitly
-stated otherwise in the method name).
+stated otherwise in the respective method-name).
 
 
 ```rust
@@ -29,8 +29,12 @@ if overflow != Pico::ZERO {
 }
 
 // pretty formatting options
+assert_eq!("0.100 × 0.000000004 = 0.000000000400",
+    format!("{mA} × {ns} = {pC}"));
 assert_eq!("100E-3 × 4E-9 = 400E-12",
     format!("{mA:E} × {ns:E} = {pC:E}"));
+assert_eq!("100 mA × 4 ns = 400 pC",
+    format!("{mA:#}A × {ns:#}s = {pC:#}C"));
 ```
 
 This is free and unencumbered software released into the

@@ -674,6 +674,111 @@ impl<const EXP: i8> BaseCount<EXP> {
 
         return (buf, i);
     }
+
+    fn fmt_metric_prefix(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (suffix, frac_n): (&str, usize) = match const { EXP } {
+            31.. => return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f),
+            30 => (" Q", 0),
+            29 => (" Q", 1),
+            28 => (" Q", 2),
+            27 => (" R", 0),
+            26 => (" R", 1),
+            25 => (" R", 2),
+            24 => (" Y", 0),
+            23 => (" Y", 1),
+            22 => (" Y", 2),
+            21 => (" Z", 0),
+            20 => (" Z", 1),
+            19 => (" Z", 2),
+            18 => (" E", 0),
+            17 => (" E", 1),
+            16 => (" E", 2),
+            15 => (" P", 0),
+            14 => (" P", 1),
+            13 => (" P", 2),
+            12 => (" T", 0),
+            11 => (" T", 1),
+            10 => (" T", 2),
+            9 => (" G", 0),
+            8 => (" G", 1),
+            7 => (" G", 2),
+            6 => (" M", 0),
+            5 => (" M", 1),
+            4 => (" M", 2),
+            3 => (" k", 0),
+            2 => (" h", 0),
+            1 => (" da", 0),
+            0 => ("", 0),
+            -1 => (" d", 0),
+            -2 => (" c", 0),
+            -3 => (" m", 0),
+            -4 => (" m", 1),
+            -5 => (" m", 2),
+            -6 => (" µ", 0),
+            -7 => (" µ", 1),
+            -8 => (" µ", 2),
+            -9 => (" n", 0),
+            -10 => (" n", 1),
+            -11 => (" n", 2),
+            -12 => (" p", 0),
+            -13 => (" p", 1),
+            -14 => (" p", 2),
+            -15 => (" f", 0),
+            -16 => (" f", 1),
+            -17 => (" f", 2),
+            -18 => (" a", 0),
+            -19 => (" a", 1),
+            -20 => (" a", 2),
+            -21 => (" z", 0),
+            -22 => (" z", 1),
+            -23 => (" z", 2),
+            -24 => (" y", 0),
+            -25 => (" y", 1),
+            -26 => (" y", 2),
+            -27 => (" r", 0),
+            -28 => (" r", 1),
+            -29 => (" r", 2),
+            -30 => (" q", 0),
+            -31 => (" q", 1),
+            -32 => (" q", 2),
+            ..-32 => {
+                panic!("TODO: write as fraction");
+            }
+        };
+
+        let (mut buf, lzc) = self.count_digits();
+        match frac_n {
+            0 => f.write_str(buf[lzc..].as_str())?,
+
+            1 => {
+                // last digit as fraction
+                if lzc > 18 {
+                    buf[18] = Char::FullStop;
+                    f.write_str(buf[17..].as_str())?;
+                } else {
+                    f.write_str(buf[lzc..19].as_str())?;
+                    buf[18] = Char::FullStop;
+                    f.write_str(buf[18..].as_str())?;
+                }
+            }
+
+            2 => {
+                // last two digits as fraction
+                if lzc > 17 {
+                    buf[17] = Char::FullStop;
+                    f.write_str(buf[16..].as_str())?;
+                } else {
+                    f.write_str(buf[lzc..18].as_str())?;
+                    buf[17] = Char::FullStop;
+                    f.write_str(buf[17..].as_str())?;
+                }
+            }
+
+            _ => unreachable!(),
+        }
+
+        f.write_str(suffix)
+    }
 }
 
 #[cfg(test)]
@@ -871,10 +976,26 @@ mod text_tests {
     }
 }
 
-/// Display the number in plain-decimal notation.
-/// Any EXP higher than zero causes E notation.
+/// Display the number in plain-decimal notation. Any EXP above zero causes E
+/// notation instead.
+///
+/// Alternate formatting (with the "#" flag) displays the count of non-zero EXP
+/// with a metric prefix and non-breaking space in between. EXP without prefix
+/// definition get the count as a fraction of the next prefix in line, if any.
+/// Otherwise, formatting falls back to E notation for any EXP above 30.
+///
+/// ```
+/// assert_eq!("0.72 n", format!("{:#}",
+///     b10::BaseCount::<-11>::from(72)));
+/// assert_eq!("12345.6 G", format!("{:#}",
+///     b10::BaseCount::<8>::from(123456)));
+/// ```
 impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if const { EXP != 0 } && f.alternate() {
+            return self.fmt_metric_prefix(f);
+        }
+
         if const { EXP > 0 } {
             return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f);
         }
@@ -1005,6 +1126,45 @@ impl<const EXP: i8> fmt::UpperExp for BaseCount<EXP> {
 #[cfg(test)]
 mod fmt_tests {
     use super::*;
+
+    #[test]
+    fn alternate() {
+        assert_eq!("42", format!("{:#}", BaseCount::<0>::from(42)));
+        assert_eq!("42 da", format!("{:#}", BaseCount::<1>::from(42)));
+        assert_eq!("42 h", format!("{:#}", BaseCount::<2>::from(42)));
+        assert_eq!("42 k", format!("{:#}", BaseCount::<3>::from(42)));
+        assert_eq!("0.42 M", format!("{:#}", BaseCount::<4>::from(42)));
+        assert_eq!("4.2 M", format!("{:#}", BaseCount::<5>::from(42)));
+        assert_eq!("42 M", format!("{:#}", BaseCount::<6>::from(42)));
+        assert_eq!("0.42 G", format!("{:#}", BaseCount::<7>::from(42)));
+        // …
+        assert_eq!("0.42 Q", format!("{:#}", BaseCount::<28>::from(42)));
+        assert_eq!("4.2 Q", format!("{:#}", BaseCount::<29>::from(42)));
+        assert_eq!("42 Q", format!("{:#}", BaseCount::<30>::from(42)));
+        assert_eq!("42E31", format!("{:#}", BaseCount::<31>::from(42)));
+        assert_eq!("42E32", format!("{:#}", BaseCount::<32>::from(42)));
+        assert_eq!("42E33", format!("{:#}", BaseCount::<33>::from(42)));
+
+        assert_eq!("42 d", format!("{:#}", BaseCount::<-1>::from(42)));
+        assert_eq!("42 c", format!("{:#}", BaseCount::<-2>::from(42)));
+        assert_eq!("42 m", format!("{:#}", BaseCount::<-3>::from(42)));
+        assert_eq!("4.2 m", format!("{:#}", BaseCount::<-4>::from(42)));
+        assert_eq!("0.42 m", format!("{:#}", BaseCount::<-5>::from(42)));
+        assert_eq!("42 µ", format!("{:#}", BaseCount::<-6>::from(42)));
+        assert_eq!("4.2 µ", format!("{:#}", BaseCount::<-7>::from(42)));
+        // …
+        assert_eq!("4.2 r", format!("{:#}", BaseCount::<-28>::from(42)));
+        assert_eq!("0.42 r", format!("{:#}", BaseCount::<-29>::from(42)));
+        assert_eq!("42 q", format!("{:#}", BaseCount::<-30>::from(42)));
+        assert_eq!("4.2 q", format!("{:#}", BaseCount::<-31>::from(42)));
+        assert_eq!("0.42 q", format!("{:#}", BaseCount::<-32>::from(42)));
+
+        // TODO:
+        // assert_eq!("0.042", format!("{:#}", BaseCount::<-33>::from(42)));
+        // assert_eq!("0.00042", format!("{:#}", BaseCount::<-35>::from(42)));
+        // …
+        // assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000042", format!("{:#}", BaseCount::<-128>::from(42)));
+    }
 
     #[test]
     fn exp() {
