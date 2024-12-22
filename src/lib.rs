@@ -979,20 +979,46 @@ mod display_tests {
     }
 }
 
+/// Print as `UpperExp`.
 impl<const EXP: i8> fmt::Debug for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f);
     }
 }
 
+/// Print the integer count with the base [fixed].
 impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{0}e{EXP}", self.c)
+        <u64 as fmt::Display>::fmt(&self.c, f)?;
+        write!(f, "e{EXP}")
     }
 }
 
+/// Print the integer count with the base [fixed].
 impl<const EXP: i8> fmt::UpperExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{0}E{EXP}", self.c)
+        <u64 as fmt::Display>::fmt(&self.c, f)?;
+        write!(f, "E{EXP}")
+    }
+}
+
+#[cfg(test)]
+mod fmt_tests {
+    use super::*;
+
+    #[test]
+    fn exp() {
+        let x = Milli::from(42);
+        assert_eq!("42E-3", format!("{x:E}"), "upper case");
+        assert_eq!("42e-3", format!("{x:e}"), "lower case");
+        assert_eq!("42E-3", format!("{x:?}"), "as debug");
+
+        assert_eq!("+42E-3", format!("{x:+E}"), "tolerate +");
+        assert_eq!("42e-3", format!("{x:-e}"), "tolerate -");
+
+        assert_eq!("0042E-3", format!("{x:04E}"), "zero pad");
+        assert_eq!("42e-3", format!("{x:01e}"), "under pad");
+
+        assert_eq!("42 E-3", format!("{x:<3E}"), "space fill");
     }
 }
