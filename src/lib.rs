@@ -316,10 +316,8 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// overflows by design.
     ///
     /// ```
-    /// use b10::{Centi, Natural};
-    ///
-    /// let price = Centi::from(100042);
-    /// let fifty = Natural::from(50);
+    /// let price = b10::BaseCount::<-2>::from(100042);
+    /// let fifty = b10::Natural::from(50);
     /// let (part, rem) = price.quotient_int(fifty).unwrap();
     ///
     /// assert_eq!("1000.42 ÷ 50 is 20 with 0.42 remaining",
@@ -346,9 +344,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// Get the quotient and the remainder for divisor constant DIV.
     ///
     /// ```
-    /// use b10::Centi;
-    ///
-    /// let price = Centi::from(299);
+    /// let price = b10::BaseCount::<-2>::from(299);
     /// let (half, remainder) = price.quotient_const::<2>();
     ///
     /// assert_eq!("½ of 2.99 is 1.49 with 0.01 remaining",
@@ -498,7 +494,6 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///
     ///
     /// ```
-    /// # use std::io::Read;
     /// let label = b"1.44 MB";
     /// // micro resolution of mega value to count bytes
     /// let (read_v, read_n) = b10::Micro::parse(label);
