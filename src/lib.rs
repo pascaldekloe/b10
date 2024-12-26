@@ -1027,7 +1027,7 @@ impl<const EXP: i8> fmt::Debug for BaseCount<EXP> {
     }
 }
 
-/// Print the integer count with the base [fixed].
+/// Print the integer count with the base (fixed).
 impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <u64 as fmt::Display>::fmt(&self.c, f)?;
@@ -1035,7 +1035,7 @@ impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
     }
 }
 
-/// Print the integer count with the base [fixed].
+/// Print the integer count with the base (fixed).
 impl<const EXP: i8> fmt::UpperExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <u64 as fmt::Display>::fmt(&self.c, f)?;
