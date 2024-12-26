@@ -43,7 +43,7 @@ pub type Quecto = BaseCount<-30>;
 /// let cents = b10::BaseCount::<-2>::from(199);
 /// assert_eq!("€ 1.99", format!("€ {cents}"));
 /// ```
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
 pub struct BaseCount<const EXP: i8> {
     c: u64,
 }
@@ -265,6 +265,15 @@ impl<const EXP: i8> BaseCount<EXP> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generic_constants() {
+        assert!(Kilo::MIN > Kilo::ZERO);
+        assert!(Kilo::MAX > Kilo::MIN);
+        assert_eq!(0 as u64, Kilo::ZERO.into());
+        assert_eq!(1 as u64, Kilo::MIN.into());
+        assert_eq!(u64::MAX, Kilo::MAX.into());
+    }
 
     #[test]
     fn rebase() {
