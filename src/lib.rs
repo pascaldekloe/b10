@@ -344,6 +344,10 @@ mod tests {
     }
 }
 
+/// The highest number of fractions fixed to zero is `i8::MIN` minus 20 variable
+/// digits for the `u64` count.
+static MAX_ZERO_LEAD: &str = "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
 // alias ASCII digits
 const D0: Char = Char::Digit0;
 const D1: Char = Char::Digit1;
@@ -379,6 +383,40 @@ static DOUBLE_DIGIT_TABLE: [Char; 200] = [
     D9, D0, D9, D1, D9, D2, D9, D3, D9, D4, // "90".."94"
     D9, D5, D9, D6, D9, D7, D9, D8, D9, D9, // "95".."99"
 ];
+
+/// Format the integer value as ASCII with leading zeroes.
+/// The usize return counts the number of leading zeroes.
+fn count_digits(n: u64) -> ([Char; 20], usize) {
+    // initialize result as "00000000000000000000"
+    let mut buf: [Char; 20] = [Char::Digit0; 20];
+    // leading zero count equals write index
+    let mut i = buf.len();
+
+    // format backwards; least significant first
+    let mut remain = n;
+
+    // print per two digits
+    while remain > 9 {
+        let p = (remain % 100) as usize * 2;
+        remain /= 100;
+
+        i -= 2;
+        buf[i + 0] = DOUBLE_DIGIT_TABLE[p + 0];
+        buf[i + 1] = DOUBLE_DIGIT_TABLE[p + 1];
+    }
+
+    // print remainder digit, if any
+    if remain != 0 {
+        assert!(remain < 10);
+        let p = (remain as usize * 2) + 1;
+        // remain = 0; // redundant
+
+        i -= 1;
+        buf[i] = DOUBLE_DIGIT_TABLE[p];
+    }
+
+    return (buf, i);
+}
 
 /// Textual Representation
 impl<const EXP: i8> BaseCount<EXP> {
@@ -575,41 +613,6 @@ impl<const EXP: i8> BaseCount<EXP> {
         (num, exp, i)
     }
 
-    /// Format the integer value as ASCII with leading zeroes.
-    /// The usize return counts the number of leading zeroes.
-    /// Self::ZERO needs separate handling without count_digits.
-    fn count_digits(&self) -> ([Char; 20], usize) {
-        // initialize result as "00000000000000000000"
-        let mut buf: [Char; 20] = [Char::Digit0; 20];
-        // leading zero count equals write index
-        let mut i = buf.len();
-
-        // format backwards; least significant first
-        let mut remain = self.c;
-
-        // print per two digits
-        while remain > 9 {
-            let p = (remain % 100) as usize * 2;
-            remain /= 100;
-
-            i -= 2;
-            buf[i + 0] = DOUBLE_DIGIT_TABLE[p + 0];
-            buf[i + 1] = DOUBLE_DIGIT_TABLE[p + 1];
-        }
-
-        // print remainder digit, if any
-        if remain != 0 {
-            assert!(remain < 10);
-            let p = (remain as usize * 2) + 1;
-            // remain = 0; // redundant
-
-            i -= 1;
-            buf[i] = DOUBLE_DIGIT_TABLE[p];
-        }
-
-        return (buf, i);
-    }
-
     /// Get the SI prefix with the empty string for undefined.
     pub const fn metric_prefix() -> &'static str {
         match EXP {
@@ -714,7 +717,7 @@ impl<const EXP: i8> BaseCount<EXP> {
             }
         };
 
-        let (mut buf, lzc) = self.count_digits();
+        let (mut buf, lzc) = count_digits(self.c);
         match frac_n {
             0 => f.write_str(buf[lzc..].as_str())?,
 
@@ -752,6 +755,36 @@ impl<const EXP: i8> BaseCount<EXP> {
 #[cfg(test)]
 mod text_tests {
     use super::*;
+
+    // Verify the DOUBLE_DIGIT_TABLE content in full.
+    #[test]
+    fn count_digits_table() {
+        for i in 1..102 {
+            let (buf, lzc) = count_digits(i);
+
+            let text = buf[..].as_str();
+            match text.parse::<u64>() {
+                Err(e) => assert!(false, "got {} for {}: {}", text, i, e),
+                Ok(v) => assert_eq!(v, i, "got {} for {}", text, i),
+            };
+
+            let dec_n: usize = i.ilog10() as usize + 1;
+            let want_lzc = buf.len() - dec_n;
+            assert_eq!(lzc, want_lzc, "leading-zero count for {}", text);
+        }
+
+        let (buf_min, lzc_min) = count_digits(u64::MIN);
+        assert_eq!("00000000000000000000", buf_min.as_str());
+        assert_eq!(20, lzc_min);
+
+        let (buf_max, lzc_max) = count_digits(u64::MAX);
+        assert_eq!("18446744073709551615", buf_max.as_str());
+        assert_eq!(0, lzc_max);
+
+        let (buf_tz, lzc_tz) = count_digits(1_000_000_000_000_000_000);
+        assert_eq!("01000000000000000000", buf_tz.as_str());
+        assert_eq!(1, lzc_tz);
+    }
 
     #[test]
     fn omission() {
@@ -916,33 +949,6 @@ mod text_tests {
         assert_eq!((70.into(), 6), BaseCount::<-1>::parse(b"7.0E-0"));
     }
 
-    // Verify the DOUBLE_DIGIT_TABLE content in full.
-    #[test]
-    fn count_digits() {
-        // don't care about special case 0 as it is not used
-        for i in 1..102 {
-            let (buf, lzc) = Natural::from(i).count_digits();
-
-            let text = buf[..].as_str();
-            match text.parse::<u64>() {
-                Err(e) => assert!(false, "got {} for {}: {}", text, i, e),
-                Ok(v) => assert_eq!(v, i, "got {} for {}", text, i),
-            };
-
-            let dec_n: usize = i.ilog10() as usize + 1;
-            let want_lzc = buf.len() - dec_n;
-            assert_eq!(lzc, want_lzc, "leading-zero count for {}", text);
-        }
-
-        let (buf_max, lzc_max) = Natural::from(u64::MAX).count_digits();
-        assert_eq!("18446744073709551615", buf_max.as_str());
-        assert_eq!(0, lzc_max);
-
-        let (buf_tz, lzc_tz) = Natural::from(1_000_000_000_000_000_000).count_digits();
-        assert_eq!("01000000000000000000", buf_tz.as_str());
-        assert_eq!(1, lzc_tz);
-    }
-
     /// Double check to prevent typos.
     #[test]
     fn metric_prefix() {
@@ -997,7 +1003,7 @@ impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
         match EXP {
             // maybe plain integer
             0 => {
-                let (buf, lzc) = self.count_digits();
+                let (buf, lzc) = count_digits(self.c);
                 f.write_str(buf[lzc..].as_str())
             }
 
@@ -1007,15 +1013,14 @@ impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
 
             // fraction with leading zero guarantee
             -128..=-20 => {
-                static MAX_LEAD: &str = "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-                f.write_str(&MAX_LEAD[..const { 2 - 20 - EXP as isize } as usize])?;
-                let (buf, _) = self.count_digits();
+                f.write_str(&MAX_ZERO_LEAD[..const { 2 - 20 - EXP as isize } as usize])?;
+                let (buf, _) = count_digits(self.c);
                 f.write_str(buf.as_str())
             }
 
             // fraction
             -19..0 => {
-                let (buf, lzc) = self.count_digits();
+                let (buf, lzc) = count_digits(self.c);
                 let dec_sep = const { EXP as isize + 20 } as usize;
                 if lzc < dec_sep {
                     f.write_str(buf[lzc..dec_sep].as_str())?;
@@ -1072,7 +1077,7 @@ mod fmt_tests {
         assert_eq!("0.0000000000000000007", format!("{}", BaseCount::<-19>::from(7)));
         assert_eq!("0.00000000000000000008", format!("{}", BaseCount::<-20>::from(8)));
         assert_eq!("0.000000000000000000009", format!("{}", BaseCount::<-21>::from(9)));
-	}
+    }
 
     #[test]
     #[rustfmt::skip]
