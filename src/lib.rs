@@ -82,7 +82,6 @@ impl<const EXP: i8> From<BaseCount<EXP>> for u64 {
     }
 }
 
-/// Numeric Values & Attributes
 impl<const EXP: i8> BaseCount<EXP> {
     /// Numeric value 0 is always in range.
     pub const ZERO: Self = Self { c: 0 };
@@ -169,104 +168,6 @@ impl<const EXP: i8> BaseCount<EXP> {
         };
     }
 
-    /// Get the SI prefix with the empty string for undefined.
-    pub const fn metric_prefix() -> &'static str {
-        match EXP {
-            1 => "da",
-            2 => "h",
-            3 => "k",
-            6 => "M",
-            9 => "G",
-            12 => "T",
-            15 => "P",
-            18 => "E",
-            21 => "Z",
-            24 => "Y",
-            27 => "R",
-            30 => "Q",
-
-            -1 => "d",
-            -2 => "c",
-            -3 => "m",
-            -6 => "µ",
-            -9 => "n",
-            -12 => "p",
-            -15 => "f",
-            -18 => "a",
-            -21 => "z",
-            -24 => "y",
-            -27 => "r",
-            -30 => "q",
-
-            _ => "",
-        }
-    }
-}
-
-#[cfg(test)]
-mod numeric_tests {
-    use super::*;
-
-    #[test]
-    fn rebase() {
-        assert_eq!(Some(Natural::from(1000)), Kilo::from(1).rebase());
-        assert_eq!(Some(Kilo::from(2000)), Mega::from(2).rebase());
-        assert_eq!(Some(Milli::from(3000)), Natural::from(3).rebase());
-        assert_eq!(Some(Micro::from(4000)), Milli::from(4).rebase());
-
-        // limit of 64 bits is 18_446_744_073_709_551_615
-        assert_eq!(
-            Some(Femto::from(18_000_000_000_000_000_000)),
-            Kilo::from(18).rebase::<-15>(),
-        );
-        assert_eq!(None, Kilo::from(19).rebase::<-15>(),);
-
-        // below Self::MIN
-        assert_eq!(None, Exa::from(200).rebase::<0>());
-        assert_eq!(None, Exa::from(300).rebase::<-128>());
-        assert_eq!(None, Natural::from(400).rebase::<-18>());
-        assert_eq!(None, Natural::from(500).rebase::<-128>());
-
-        // deny rounding
-        assert_eq!(None, Natural::from(123).rebase::<1>());
-        assert_eq!(None, Natural::from(223).rebase::<2>());
-        assert_eq!(None, Natural::from(323).rebase::<3>());
-        assert_eq!(None, Natural::from(423).rebase::<4>());
-    }
-
-    /// Double check to prevent typos.
-    #[test]
-    fn metric_prefix() {
-        assert_eq!("da", Deca::metric_prefix());
-        assert_eq!("h", Hecto::metric_prefix());
-        assert_eq!("k", Kilo::metric_prefix());
-        assert_eq!("M", Mega::metric_prefix());
-        assert_eq!("G", Giga::metric_prefix());
-        assert_eq!("T", Tera::metric_prefix());
-        assert_eq!("P", Peta::metric_prefix());
-        assert_eq!("E", Exa::metric_prefix());
-        assert_eq!("Z", Zetta::metric_prefix());
-        assert_eq!("Y", Yotta::metric_prefix());
-        assert_eq!("R", Ronna::metric_prefix());
-        assert_eq!("Q", Quetta::metric_prefix());
-
-        assert_eq!("d", Deci::metric_prefix());
-        assert_eq!("c", Centi::metric_prefix());
-        assert_eq!("m", Milli::metric_prefix());
-        assert_eq!("µ", Micro::metric_prefix());
-        assert_eq!("n", Nano::metric_prefix());
-        assert_eq!("p", Pico::metric_prefix());
-        assert_eq!("f", Femto::metric_prefix());
-        assert_eq!("a", Atto::metric_prefix());
-        assert_eq!("z", Zepto::metric_prefix());
-        assert_eq!("y", Yocto::metric_prefix());
-        assert_eq!("r", Ronto::metric_prefix());
-        assert_eq!("q", Quecto::metric_prefix());
-    }
-}
-
-/// Arithmetic Operation
-impl<const EXP: i8> BaseCount<EXP> {
     /// Get the sum of both counts including an overflow flag. Calculation is
     /// lossless. For any pair of arguments, self + summand = sum + overflow,
     /// in which overflow represents 2 to the power of 64.
@@ -362,8 +263,35 @@ impl<const EXP: i8> BaseCount<EXP> {
 }
 
 #[cfg(test)]
-mod arithmetic_tests {
+mod tests {
     use super::*;
+
+    #[test]
+    fn rebase() {
+        assert_eq!(Some(Natural::from(1000)), Kilo::from(1).rebase());
+        assert_eq!(Some(Kilo::from(2000)), Mega::from(2).rebase());
+        assert_eq!(Some(Milli::from(3000)), Natural::from(3).rebase());
+        assert_eq!(Some(Micro::from(4000)), Milli::from(4).rebase());
+
+        // limit of 64 bits is 18_446_744_073_709_551_615
+        assert_eq!(
+            Some(Femto::from(18_000_000_000_000_000_000)),
+            Kilo::from(18).rebase::<-15>(),
+        );
+        assert_eq!(None, Kilo::from(19).rebase::<-15>(),);
+
+        // below Self::MIN
+        assert_eq!(None, Exa::from(200).rebase::<0>());
+        assert_eq!(None, Exa::from(300).rebase::<-128>());
+        assert_eq!(None, Natural::from(400).rebase::<-18>());
+        assert_eq!(None, Natural::from(500).rebase::<-128>());
+
+        // deny rounding
+        assert_eq!(None, Natural::from(123).rebase::<1>());
+        assert_eq!(None, Natural::from(223).rebase::<2>());
+        assert_eq!(None, Natural::from(323).rebase::<3>());
+        assert_eq!(None, Natural::from(423).rebase::<4>());
+    }
 
     #[test]
     fn sum_overflow() {
@@ -673,6 +601,39 @@ impl<const EXP: i8> BaseCount<EXP> {
         return (buf, i);
     }
 
+    /// Get the SI prefix with the empty string for undefined.
+    pub const fn metric_prefix() -> &'static str {
+        match EXP {
+            1 => "da",
+            2 => "h",
+            3 => "k",
+            6 => "M",
+            9 => "G",
+            12 => "T",
+            15 => "P",
+            18 => "E",
+            21 => "Z",
+            24 => "Y",
+            27 => "R",
+            30 => "Q",
+
+            -1 => "d",
+            -2 => "c",
+            -3 => "m",
+            -6 => "µ",
+            -9 => "n",
+            -12 => "p",
+            -15 => "f",
+            -18 => "a",
+            -21 => "z",
+            -24 => "y",
+            -27 => "r",
+            -30 => "q",
+
+            _ => "",
+        }
+    }
+
     fn fmt_metric_prefix(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (suffix, frac_n): (&str, usize) = match const { EXP } {
             31.. => return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f),
@@ -972,6 +933,36 @@ mod text_tests {
         assert_eq!("01000000000000000000", buf_tz.as_str());
         assert_eq!(1, lzc_tz);
     }
+
+    /// Double check to prevent typos.
+    #[test]
+    fn metric_prefix() {
+        assert_eq!("da", Deca::metric_prefix());
+        assert_eq!("h", Hecto::metric_prefix());
+        assert_eq!("k", Kilo::metric_prefix());
+        assert_eq!("M", Mega::metric_prefix());
+        assert_eq!("G", Giga::metric_prefix());
+        assert_eq!("T", Tera::metric_prefix());
+        assert_eq!("P", Peta::metric_prefix());
+        assert_eq!("E", Exa::metric_prefix());
+        assert_eq!("Z", Zetta::metric_prefix());
+        assert_eq!("Y", Yotta::metric_prefix());
+        assert_eq!("R", Ronna::metric_prefix());
+        assert_eq!("Q", Quetta::metric_prefix());
+
+        assert_eq!("d", Deci::metric_prefix());
+        assert_eq!("c", Centi::metric_prefix());
+        assert_eq!("m", Milli::metric_prefix());
+        assert_eq!("µ", Micro::metric_prefix());
+        assert_eq!("n", Nano::metric_prefix());
+        assert_eq!("p", Pico::metric_prefix());
+        assert_eq!("f", Femto::metric_prefix());
+        assert_eq!("a", Atto::metric_prefix());
+        assert_eq!("z", Zepto::metric_prefix());
+        assert_eq!("y", Yocto::metric_prefix());
+        assert_eq!("r", Ronto::metric_prefix());
+        assert_eq!("q", Quecto::metric_prefix());
+    }
 }
 
 /// Display the number in plain-decimal notation. Any EXP above zero causes E
@@ -1029,8 +1020,31 @@ impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
     }
 }
 
+/// Print as `UpperExp`.
+impl<const EXP: i8> fmt::Debug for BaseCount<EXP> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f);
+    }
+}
+
+/// Print the integer count with the base [fixed].
+impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <u64 as fmt::Display>::fmt(&self.c, f)?;
+        write!(f, "e{EXP}")
+    }
+}
+
+/// Print the integer count with the base [fixed].
+impl<const EXP: i8> fmt::UpperExp for BaseCount<EXP> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <u64 as fmt::Display>::fmt(&self.c, f)?;
+        write!(f, "E{EXP}")
+    }
+}
+
 #[cfg(test)]
-mod display_tests {
+mod fmt_tests {
     use super::*;
 
     #[test]
@@ -1081,44 +1095,6 @@ mod display_tests {
         assert_eq!("0.12345678901234567890", format!("{}", BaseCount::<-20>::from(n)));
         assert_eq!("0.012345678901234567890", format!("{}", BaseCount::<-21>::from(n)));
     }
-
-    #[test]
-    #[rustfmt::skip]
-    fn zero_outliers() {
-        assert_eq!("0E127", format!("{}", BaseCount::<{ i8::MAX }>::ZERO));
-        assert_eq!("0E127", format!("{:#}", BaseCount::<{ i8::MAX }>::ZERO));
-        assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", format!("{}", BaseCount::<{ i8::MIN }>::ZERO));
-        // TODO:
-        // assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 e", format!("{:#}", BaseCount::<{ i8::MIN }>::ZERO));
-    }
-}
-
-/// Print as `UpperExp`.
-impl<const EXP: i8> fmt::Debug for BaseCount<EXP> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f);
-    }
-}
-
-/// Print the integer count with the base [fixed].
-impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <u64 as fmt::Display>::fmt(&self.c, f)?;
-        write!(f, "e{EXP}")
-    }
-}
-
-/// Print the integer count with the base [fixed].
-impl<const EXP: i8> fmt::UpperExp for BaseCount<EXP> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <u64 as fmt::Display>::fmt(&self.c, f)?;
-        write!(f, "E{EXP}")
-    }
-}
-
-#[cfg(test)]
-mod fmt_tests {
-    use super::*;
 
     #[test]
     fn alternate() {
@@ -1173,5 +1149,15 @@ mod fmt_tests {
         assert_eq!("42e-3", format!("{x:01e}"), "under pad");
 
         assert_eq!("42 E-3", format!("{x:<3E}"), "space fill");
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn zero_outliers() {
+        assert_eq!("0E127", format!("{}", BaseCount::<{ i8::MAX }>::ZERO));
+        assert_eq!("0E127", format!("{:#}", BaseCount::<{ i8::MAX }>::ZERO));
+        assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", format!("{}", BaseCount::<{ i8::MIN }>::ZERO));
+        // TODO:
+        // assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 e", format!("{:#}", BaseCount::<{ i8::MIN }>::ZERO));
     }
 }
