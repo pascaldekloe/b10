@@ -648,7 +648,9 @@ impl<const EXP: i8> BaseCount<EXP> {
 
     fn fmt_metric_prefix(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (suffix, frac_n): (&str, usize) = match const { EXP } {
-            31.. => return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f),
+            // fallback
+            31.. => return write!(f, "{self:E}"),
+
             30 => (" Q", 0),
             29 => (" Q", 1),
             28 => (" Q", 2),
@@ -712,9 +714,112 @@ impl<const EXP: i8> BaseCount<EXP> {
             -30 => (" q", 0),
             -31 => (" q", 1),
             -32 => (" q", 2),
-            ..-32 => {
-                panic!("TODO: write as fraction");
-            }
+
+            -33 => return write!(f, "{} q", BaseCount::<-3>::from(self.c)),
+            -34 => return write!(f, "{} q", BaseCount::<-4>::from(self.c)),
+            -35 => return write!(f, "{} q", BaseCount::<-5>::from(self.c)),
+            -36 => return write!(f, "{} q", BaseCount::<-6>::from(self.c)),
+            -37 => return write!(f, "{} q", BaseCount::<-7>::from(self.c)),
+            -38 => return write!(f, "{} q", BaseCount::<-8>::from(self.c)),
+            -39 => return write!(f, "{} q", BaseCount::<-9>::from(self.c)),
+
+            -40 => return write!(f, "{} q", BaseCount::<-10>::from(self.c)),
+            -41 => return write!(f, "{} q", BaseCount::<-11>::from(self.c)),
+            -42 => return write!(f, "{} q", BaseCount::<-12>::from(self.c)),
+            -43 => return write!(f, "{} q", BaseCount::<-13>::from(self.c)),
+            -44 => return write!(f, "{} q", BaseCount::<-14>::from(self.c)),
+            -45 => return write!(f, "{} q", BaseCount::<-15>::from(self.c)),
+            -46 => return write!(f, "{} q", BaseCount::<-16>::from(self.c)),
+            -47 => return write!(f, "{} q", BaseCount::<-17>::from(self.c)),
+            -48 => return write!(f, "{} q", BaseCount::<-18>::from(self.c)),
+            -49 => return write!(f, "{} q", BaseCount::<-19>::from(self.c)),
+
+            -50 => return write!(f, "{} q", BaseCount::<-20>::from(self.c)),
+            -51 => return write!(f, "{} q", BaseCount::<-21>::from(self.c)),
+            -52 => return write!(f, "{} q", BaseCount::<-22>::from(self.c)),
+            -53 => return write!(f, "{} q", BaseCount::<-23>::from(self.c)),
+            -54 => return write!(f, "{} q", BaseCount::<-24>::from(self.c)),
+            -55 => return write!(f, "{} q", BaseCount::<-25>::from(self.c)),
+            -56 => return write!(f, "{} q", BaseCount::<-26>::from(self.c)),
+            -57 => return write!(f, "{} q", BaseCount::<-27>::from(self.c)),
+            -58 => return write!(f, "{} q", BaseCount::<-28>::from(self.c)),
+            -59 => return write!(f, "{} q", BaseCount::<-29>::from(self.c)),
+
+            -60 => return write!(f, "{} q", BaseCount::<-30>::from(self.c)),
+            -61 => return write!(f, "{} q", BaseCount::<-31>::from(self.c)),
+            -62 => return write!(f, "{} q", BaseCount::<-32>::from(self.c)),
+            -63 => return write!(f, "{} q", BaseCount::<-33>::from(self.c)),
+            -64 => return write!(f, "{} q", BaseCount::<-34>::from(self.c)),
+            -65 => return write!(f, "{} q", BaseCount::<-35>::from(self.c)),
+            -66 => return write!(f, "{} q", BaseCount::<-36>::from(self.c)),
+            -67 => return write!(f, "{} q", BaseCount::<-37>::from(self.c)),
+            -68 => return write!(f, "{} q", BaseCount::<-38>::from(self.c)),
+            -69 => return write!(f, "{} q", BaseCount::<-39>::from(self.c)),
+
+            -70 => return write!(f, "{} q", BaseCount::<-40>::from(self.c)),
+            -71 => return write!(f, "{} q", BaseCount::<-41>::from(self.c)),
+            -72 => return write!(f, "{} q", BaseCount::<-42>::from(self.c)),
+            -73 => return write!(f, "{} q", BaseCount::<-43>::from(self.c)),
+            -74 => return write!(f, "{} q", BaseCount::<-44>::from(self.c)),
+            -75 => return write!(f, "{} q", BaseCount::<-45>::from(self.c)),
+            -76 => return write!(f, "{} q", BaseCount::<-46>::from(self.c)),
+            -77 => return write!(f, "{} q", BaseCount::<-47>::from(self.c)),
+            -78 => return write!(f, "{} q", BaseCount::<-48>::from(self.c)),
+            -79 => return write!(f, "{} q", BaseCount::<-49>::from(self.c)),
+
+            -80 => return write!(f, "{} q", BaseCount::<-50>::from(self.c)),
+            -81 => return write!(f, "{} q", BaseCount::<-51>::from(self.c)),
+            -82 => return write!(f, "{} q", BaseCount::<-52>::from(self.c)),
+            -83 => return write!(f, "{} q", BaseCount::<-53>::from(self.c)),
+            -84 => return write!(f, "{} q", BaseCount::<-54>::from(self.c)),
+            -85 => return write!(f, "{} q", BaseCount::<-55>::from(self.c)),
+            -86 => return write!(f, "{} q", BaseCount::<-56>::from(self.c)),
+            -87 => return write!(f, "{} q", BaseCount::<-57>::from(self.c)),
+            -88 => return write!(f, "{} q", BaseCount::<-58>::from(self.c)),
+            -89 => return write!(f, "{} q", BaseCount::<-59>::from(self.c)),
+
+            -90 => return write!(f, "{} q", BaseCount::<-60>::from(self.c)),
+            -91 => return write!(f, "{} q", BaseCount::<-61>::from(self.c)),
+            -92 => return write!(f, "{} q", BaseCount::<-62>::from(self.c)),
+            -93 => return write!(f, "{} q", BaseCount::<-63>::from(self.c)),
+            -94 => return write!(f, "{} q", BaseCount::<-64>::from(self.c)),
+            -95 => return write!(f, "{} q", BaseCount::<-65>::from(self.c)),
+            -96 => return write!(f, "{} q", BaseCount::<-66>::from(self.c)),
+            -97 => return write!(f, "{} q", BaseCount::<-67>::from(self.c)),
+            -98 => return write!(f, "{} q", BaseCount::<-68>::from(self.c)),
+            -99 => return write!(f, "{} q", BaseCount::<-69>::from(self.c)),
+
+            -100 => return write!(f, "{} q", BaseCount::<-70>::from(self.c)),
+            -101 => return write!(f, "{} q", BaseCount::<-71>::from(self.c)),
+            -102 => return write!(f, "{} q", BaseCount::<-72>::from(self.c)),
+            -103 => return write!(f, "{} q", BaseCount::<-73>::from(self.c)),
+            -104 => return write!(f, "{} q", BaseCount::<-74>::from(self.c)),
+            -105 => return write!(f, "{} q", BaseCount::<-75>::from(self.c)),
+            -106 => return write!(f, "{} q", BaseCount::<-76>::from(self.c)),
+            -107 => return write!(f, "{} q", BaseCount::<-77>::from(self.c)),
+            -108 => return write!(f, "{} q", BaseCount::<-78>::from(self.c)),
+            -109 => return write!(f, "{} q", BaseCount::<-79>::from(self.c)),
+
+            -110 => return write!(f, "{} q", BaseCount::<-80>::from(self.c)),
+            -111 => return write!(f, "{} q", BaseCount::<-81>::from(self.c)),
+            -112 => return write!(f, "{} q", BaseCount::<-82>::from(self.c)),
+            -113 => return write!(f, "{} q", BaseCount::<-83>::from(self.c)),
+            -114 => return write!(f, "{} q", BaseCount::<-84>::from(self.c)),
+            -115 => return write!(f, "{} q", BaseCount::<-85>::from(self.c)),
+            -116 => return write!(f, "{} q", BaseCount::<-86>::from(self.c)),
+            -117 => return write!(f, "{} q", BaseCount::<-87>::from(self.c)),
+            -118 => return write!(f, "{} q", BaseCount::<-88>::from(self.c)),
+            -119 => return write!(f, "{} q", BaseCount::<-89>::from(self.c)),
+
+            -120 => return write!(f, "{} q", BaseCount::<-90>::from(self.c)),
+            -121 => return write!(f, "{} q", BaseCount::<-91>::from(self.c)),
+            -122 => return write!(f, "{} q", BaseCount::<-92>::from(self.c)),
+            -123 => return write!(f, "{} q", BaseCount::<-93>::from(self.c)),
+            -124 => return write!(f, "{} q", BaseCount::<-94>::from(self.c)),
+            -125 => return write!(f, "{} q", BaseCount::<-95>::from(self.c)),
+            -126 => return write!(f, "{} q", BaseCount::<-96>::from(self.c)),
+            -127 => return write!(f, "{} q", BaseCount::<-97>::from(self.c)),
+            -128 => return write!(f, "{} q", BaseCount::<-98>::from(self.c)),
         };
 
         let (mut buf, lzc) = count_digits(self.c);
@@ -1140,12 +1245,11 @@ mod fmt_tests {
         assert_eq!("42 q", format!("{:#}", BaseCount::<-30>::from(42)));
         assert_eq!("4.2 q", format!("{:#}", BaseCount::<-31>::from(42)));
         assert_eq!("0.42 q", format!("{:#}", BaseCount::<-32>::from(42)));
-
-        // TODO:
-        // assert_eq!("0.042", format!("{:#}", BaseCount::<-33>::from(42)));
-        // assert_eq!("0.00042", format!("{:#}", BaseCount::<-35>::from(42)));
+        assert_eq!("0.042 q", format!("{:#}", BaseCount::<-33>::from(42)));
+        assert_eq!("0.0042 q", format!("{:#}", BaseCount::<-34>::from(42)));
+        assert_eq!("0.00042 q", format!("{:#}", BaseCount::<-35>::from(42)));
         // …
-        // assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000042", format!("{:#}", BaseCount::<-128>::from(42)));
+        assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000042 q", format!("{:#}", BaseCount::<{ i8::MIN }>::from(42)));
     }
 
     #[test]
@@ -1170,7 +1274,6 @@ mod fmt_tests {
         assert_eq!("0E127", format!("{}", BaseCount::<{ i8::MAX }>::ZERO));
         assert_eq!("0E127", format!("{:#}", BaseCount::<{ i8::MAX }>::ZERO));
         assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", format!("{}", BaseCount::<{ i8::MIN }>::ZERO));
-        // TODO:
-        // assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 e", format!("{:#}", BaseCount::<{ i8::MIN }>::ZERO));
+        assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 q", format!("{:#}", BaseCount::<{ i8::MIN }>::ZERO));
     }
 }
