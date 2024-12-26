@@ -87,9 +87,9 @@ impl<const EXP: i8> BaseCount<EXP> {
     pub const ZERO: Self = Self { c: 0 };
 
     /// The smallest numeric value in range is 10 to the power of EXP.
-    pub const MIN: Self = Self { c: 1 };
+    pub const ONE: Self = Self { c: 1 };
 
-    /// The largest numeric value in range is `u64::MAX` times `Self::MIN`.
+    /// The largest numeric value in range is `u64::MAX` times `Self::ONE`.
     pub const MAX: Self = Self { c: u64::MAX };
 
     /// Get numeric value n iff an exact match within the base exponent exits,
@@ -145,7 +145,7 @@ impl<const EXP: i8> BaseCount<EXP> {
         assert!(const { R > EXP });
 
         if const { R as isize - EXP as isize > 19 } {
-            // rebase underflows Self::MIN
+            // rebase underflows Self::ONE
             return None;
         }
 
@@ -268,10 +268,10 @@ mod tests {
 
     #[test]
     fn generic_constants() {
-        assert!(Kilo::MIN > Kilo::ZERO);
-        assert!(Kilo::MAX > Kilo::MIN);
+        assert!(Kilo::ONE > Kilo::ZERO);
+        assert!(Kilo::MAX > Kilo::ONE);
         assert_eq!(0 as u64, Kilo::ZERO.into());
-        assert_eq!(1 as u64, Kilo::MIN.into());
+        assert_eq!(1 as u64, Kilo::ONE.into());
         assert_eq!(u64::MAX, Kilo::MAX.into());
     }
 
@@ -289,7 +289,7 @@ mod tests {
         );
         assert_eq!(None, Kilo::from(19).rebase::<-15>(),);
 
-        // below Self::MIN
+        // below Self::ONE
         assert_eq!(None, Exa::from(200).rebase::<0>());
         assert_eq!(None, Exa::from(300).rebase::<-128>());
         assert_eq!(None, Natural::from(400).rebase::<-18>());
@@ -426,8 +426,8 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// The following cases get rejected with a zero usize.
     ///
     ///  * No input: empty text slice
-    ///  * Range exhaustion: any numeric value over Self::MAX
-    ///  * Beyond resolution: significant digits under Self::MIN
+    ///  * Range exhaustion: any numeric value above Self::MAX
+    ///  * Beyond resolution: significant digits beneath Self::ONE
     ///
     ///
     /// ```
