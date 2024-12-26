@@ -1008,8 +1008,7 @@ impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
             }
 
             // E notation for positive exponents
-            // BUG: E notation supports more flags than Display does
-            1.. => <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f),
+            1.. => write!(f, "{self:E}"),
 
             // fraction with leading zero guarantee
             -128..=-20 => {
