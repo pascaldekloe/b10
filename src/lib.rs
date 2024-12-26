@@ -642,8 +642,6 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// The usize return counts the number of leading zeroes.
     /// Self::ZERO needs separate handling without count_digits.
     fn count_digits(&self) -> ([Char; 20], usize) {
-        debug_assert_ne!(self.c, 0);
-
         // initialize result as "00000000000000000000"
         let mut buf: [Char; 20] = [Char::Digit0; 20];
         // leading zero count equals write index
@@ -977,7 +975,7 @@ mod text_tests {
 }
 
 /// Display the number in plain-decimal notation. Any EXP above zero causes E
-/// notation instead.
+/// notation (from `UpperExp`) instead.
 ///
 /// Alternate formatting (with the "#" flag) displays the count of non-zero EXP
 /// with a metric prefix and non-breaking space in between. EXP without prefix
@@ -996,44 +994,29 @@ impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
             return self.fmt_metric_prefix(f);
         }
 
-        if const { EXP > 0 } {
-            return <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f);
-        }
-
-        if self.c == 0 {
-            return f.write_str("0");
-        }
-        let (buf, lzc) = self.count_digits();
-
-        fn write_n_zeroes(f: &mut fmt::Formatter<'_>, mut n: usize) -> fmt::Result {
-            static ZEROES: [Char; 32] = [Char::Digit0; 32];
-            while n > ZEROES.len() {
-                f.write_str(ZEROES.as_str())?;
-                n -= ZEROES.len();
-            }
-            if n != 0 {
-                f.write_str(ZEROES[..n].as_str())?;
-            }
-            Ok(())
-        }
-
         match EXP {
-            0 => f.write_str(buf[lzc..].as_str()),
-            1.. => {
-                f.write_str(buf[lzc..].as_str())?;
-                write_n_zeroes(f, EXP as usize)
+            // maybe plain integer
+            0 => {
+                let (buf, lzc) = self.count_digits();
+                f.write_str(buf[lzc..].as_str())
             }
-            -20 => {
-                f.write_str("0.")?;
+
+            // E notation for positive exponents
+            // BUG: E notation supports more flags than Display does
+            1.. => <BaseCount<EXP> as fmt::UpperExp>::fmt(self, f),
+
+            // fraction with leading zero guarantee
+            -128..=-20 => {
+                static MAX_LEAD: &str = "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+                f.write_str(&MAX_LEAD[..const { 2 - 20 - EXP as isize } as usize])?;
+                let (buf, _) = self.count_digits();
                 f.write_str(buf.as_str())
             }
-            ..-20 => {
-                f.write_str("0.")?;
-                write_n_zeroes(f, (-20 - EXP) as usize)?;
-                f.write_str(buf.as_str())
-            }
+
+            // fraction
             -19..0 => {
-                let dec_sep = const { EXP + 20 } as usize;
+                let (buf, lzc) = self.count_digits();
+                let dec_sep = const { EXP as isize + 20 } as usize;
                 if lzc < dec_sep {
                     f.write_str(buf[lzc..dec_sep].as_str())?;
                     f.write_str(".")?;
@@ -1066,7 +1049,7 @@ mod display_tests {
         assert_eq!("0.0000000000000000007", format!("{}", BaseCount::<-19>::from(7)));
         assert_eq!("0.00000000000000000008", format!("{}", BaseCount::<-20>::from(8)));
         assert_eq!("0.000000000000000000009", format!("{}", BaseCount::<-21>::from(9)));
-    }
+	}
 
     #[test]
     #[rustfmt::skip]
@@ -1097,6 +1080,16 @@ mod display_tests {
         assert_eq!("1.2345678901234567890", format!("{}", BaseCount::<-19>::from(n)));
         assert_eq!("0.12345678901234567890", format!("{}", BaseCount::<-20>::from(n)));
         assert_eq!("0.012345678901234567890", format!("{}", BaseCount::<-21>::from(n)));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn zero_outliers() {
+        assert_eq!("0E127", format!("{}", BaseCount::<{ i8::MAX }>::ZERO));
+        assert_eq!("0E127", format!("{:#}", BaseCount::<{ i8::MAX }>::ZERO));
+        assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", format!("{}", BaseCount::<{ i8::MIN }>::ZERO));
+        // TODO:
+        // assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 e", format!("{:#}", BaseCount::<{ i8::MIN }>::ZERO));
     }
 }
 
