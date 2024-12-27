@@ -177,6 +177,33 @@ impl<const EXP: i8> BaseCount<EXP> {
         return (Self { c: sum }, overflow);
     }
 
+    /// Get the difference between both counts including a negative flag. For
+    /// any pair of arguments, either self − other = difference when negative is
+    /// `false`, or other − self = difference when negative is `true`.
+    ///
+    /// ```
+    /// let (a, b): (b10::Micro, b10::Micro) = (7.into(), 9.into());
+    /// assert_eq!((2.into(), true), a.difference(b));
+    /// assert_eq!((2.into(), false), b.difference(a));
+    /// ```
+    pub fn difference(self, other: Self) -> (Self, bool) {
+        if self >= other {
+            (
+                Self {
+                    c: self.c - other.c,
+                },
+                false,
+            )
+        } else {
+            (
+                Self {
+                    c: other.c - self.c,
+                },
+                true,
+            )
+        }
+    }
+
     /// Get the product of both counts including the 64-bit overflow, if any.
     /// A compile-time check guarantees that generic P is equal to EXP + M to
     /// ensure a lossless calculation exclusively. For any pair of arguments,
