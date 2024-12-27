@@ -394,6 +394,10 @@ static DOUBLE_DIGIT_TABLE: [Char; 200] = [
 fn count_digits(n: u64) -> ([Char; 20], usize) {
     // initialize result as "00000000000000000000"
     let mut buf: [Char; 20] = [Char::Digit0; 20];
+    if n == 0 {
+        return (buf, 19);
+    }
+
     // leading zero count equals write index
     let mut i = buf.len();
 
@@ -869,7 +873,7 @@ mod text_tests {
 
         let (buf_min, lzc_min) = count_digits(u64::MIN);
         assert_eq!("00000000000000000000", buf_min.as_str());
-        assert_eq!(20, lzc_min);
+        assert_eq!(19, lzc_min);
 
         let (buf_max, lzc_max) = count_digits(u64::MAX);
         assert_eq!("18446744073709551615", buf_max.as_str());
@@ -1106,7 +1110,7 @@ impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
             1.. => write!(f, "{self:E}"),
 
             // fraction with leading zero guarantee
-            -128..=-20 => {
+            ..=-20 => {
                 f.write_str(&MAX_ZERO_LEAD[..const { 2 - 20 - EXP as isize } as usize])?;
                 let (buf, _) = count_digits(self.c);
                 f.write_str(buf.as_str())
@@ -1156,7 +1160,6 @@ mod fmt_tests {
     use super::*;
 
     #[test]
-    #[rustfmt::skip]
     fn least_significant_digit() {
         assert_eq!("1", format!("{}", BaseCount::<0>::from(1)));
 
@@ -1168,9 +1171,18 @@ mod fmt_tests {
 
         assert_eq!("0.2", format!("{}", BaseCount::<-1>::from(2)));
         assert_eq!("0.03", format!("{}", BaseCount::<-2>::from(3)));
-        assert_eq!("0.0000000000000000007", format!("{}", BaseCount::<-19>::from(7)));
-        assert_eq!("0.00000000000000000008", format!("{}", BaseCount::<-20>::from(8)));
-        assert_eq!("0.000000000000000000009", format!("{}", BaseCount::<-21>::from(9)));
+        assert_eq!(
+            "0.0000000000000000007",
+            format!("{}", BaseCount::<-19>::from(7))
+        );
+        assert_eq!(
+            "0.00000000000000000008",
+            format!("{}", BaseCount::<-20>::from(8))
+        );
+        assert_eq!(
+            "0.000000000000000000009",
+            format!("{}", BaseCount::<-21>::from(9))
+        );
     }
 
     #[test]
@@ -1259,11 +1271,31 @@ mod fmt_tests {
     }
 
     #[test]
-    #[rustfmt::skip]
-    fn zero_outliers() {
-        assert_eq!("0E127", format!("{}", BaseCount::<{ i8::MAX }>::ZERO));
-        assert_eq!("0E127", format!("{:#}", BaseCount::<{ i8::MAX }>::ZERO));
-        assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", format!("{}", BaseCount::<{ i8::MIN }>::ZERO));
-        assert_eq!("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 q", format!("{:#}", BaseCount::<{ i8::MIN }>::ZERO));
+    fn all_zero() {
+        let int = BaseCount::<0>::ZERO;
+        assert_eq!("0", format!("{int}"));
+        assert_eq!("0", format!("{int:#}"));
+        assert_eq!("0e0", format!("{int:e}"));
+
+        let max = BaseCount::<{ i8::MAX }>::ZERO;
+        assert_eq!("0E127", format!("{max}"));
+        assert_eq!("0E127", format!("{max:#}"));
+        assert_eq!("0e127", format!("{max:e}"));
+
+        let min = BaseCount::<{ i8::MIN }>::ZERO;
+        assert_eq!(
+			"0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+			format!("{min}"),
+		);
+        assert_eq!(
+			"0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 q",
+			format!("{min:#}"),
+		);
+        assert_eq!("0e-128", format!("{min:e}"));
+
+        let frac = BaseCount::<-5>::ZERO;
+        assert_eq!("0.00000", format!("{frac}"));
+        assert_eq!("0.00 m", format!("{frac:#}"));
+        assert_eq!("0e-5", format!("{frac:e}"));
     }
 }
