@@ -72,8 +72,8 @@ impl<const EXP: i8> From<u64> for BaseCount<EXP> {
 ///
 /// ```
 /// type Century = b10::BaseCount::<2>;
-/// let last = Century::map_n(1900).unwrap();
-/// assert_eq!(19, u64::from(last));
+/// let previous = Century::map_n(1900).unwrap();
+/// assert_eq!(19, u64::from(previous));
 /// ```
 impl<const EXP: i8> From<BaseCount<EXP>> for u64 {
     /// Decouple the count from the base component.
@@ -92,7 +92,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// The largest numeric value in range is `u64::MAX` times `Self::ONE`.
     pub const MAX: Self = Self { c: u64::MAX };
 
-    /// Get numeric value n iff an exact match within the base exponent exits,
+    /// Get numeric value n iff an exact match within the base exponent exists,
     /// and iff the numeric value is in range `Self::MAX`.
     ///
     /// ```
@@ -170,7 +170,7 @@ impl<const EXP: i8> BaseCount<EXP> {
 
     /// Get the sum of both counts including an overflow flag. Calculation is
     /// lossless. For any pair of arguments, self + summand = sum + overflow,
-    /// in which overflow represents 2 to the power of 64.
+    /// in which overflow represents 2⁶⁴ times the base \[`EXP`\].
     #[inline(always)]
     pub fn sum(self, summand: Self) -> (Self, bool) {
         let (sum, overflow) = self.c.overflowing_add(summand.c);
@@ -180,20 +180,22 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// Get the product of both counts including the 64-bit overflow, if any.
     /// A compile-time check guarantees that generic P is equal to EXP + M to
     /// ensure a lossless calculation exclusively. For any pair of arguments,
-    /// self × multiplicant = product + (overflow × 2^64).
+    /// self × multiplicant = product + (overflow × 2⁶⁴).
     ///
     /// ```
     /// use b10::{Milli, Nano, Pico};
     ///
     /// let mA = Milli::from(100);
     /// let ns = Nano::from(4);
+    ///
     /// let (pC, overflow):(Pico, Pico) = mA.product(ns);
     /// if overflow != Pico::ZERO {
     ///     panic!("too much for pico");
     /// }
-    ///
-    /// assert_eq!("100E-3 × 4E-9 = 400E-12",
-    ///     format!("{mA:E} × {ns:E} = {pC:E}"));
+    /// assert_eq!(
+    ///     "100E-3 × 4E-9 = 400E-12",
+    ///     format!("{mA:E} × {ns:E} = {pC:E}"),
+    /// );
     /// ```
     #[inline(always)]
     pub fn product<const M: i8, const P: i8>(
@@ -219,10 +221,12 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// ```
     /// let price = b10::BaseCount::<-2>::from(100042);
     /// let fifty = b10::Natural::from(50);
-    /// let (part, rem) = price.quotient_int(fifty).unwrap();
     ///
-    /// assert_eq!("1000.42 ÷ 50 is 20 with 0.42 remaining",
-    ///     format!("{price} ÷ {fifty} is {part} with {rem} remaining"));
+    /// let (part, rem) = price.quotient_int(fifty).unwrap();
+    /// assert_eq!(
+    ///     "1000.42 ÷ 50 is 20 with 0.42 remaining",
+    ///     format!("{price} ÷ {fifty} is {part} with {rem} remaining"),
+    /// );
     /// ```
     #[inline(always)]
     pub fn quotient_int<const D: i8>(self, divisor: BaseCount<D>) -> Option<(u64, Self)> {
@@ -247,9 +251,10 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// ```
     /// let price = b10::BaseCount::<-2>::from(299);
     /// let (half, remainder) = price.quotient_const::<2>();
-    ///
-    /// assert_eq!("½ of 2.99 is 1.49 with 0.01 remaining",
-    ///     format!("½ of {price} is {half} with {remainder} remaining"));
+    /// assert_eq!(
+    ///     "½ of 2.99 is 1.49 with 0.01 remaining",
+    ///     format!("½ of {price} is {half} with {remainder} remaining"),
+    /// );
     /// ```
     #[inline(always)]
     pub fn quotient_const<const DIV: u64>(self) -> (Self, Self) {
@@ -1091,13 +1096,14 @@ mod text_tests {
 /// Alternate formatting (with the "#" flag) displays the count of non-zero EXP
 /// with a metric prefix and non-breaking space in between. EXP without prefix
 /// definition get the count as a fraction of the next prefix in line, if any.
-/// Otherwise, formatting falls back to E notation for any EXP above 30.
+/// Otherwise, formatting falls back to E notation (for any EXP above 30).
 ///
 /// ```
-/// assert_eq!("0.72 n", format!("{:#}",
-///     b10::BaseCount::<-11>::from(72)));
-/// assert_eq!("12345.6 G", format!("{:#}",
-///     b10::BaseCount::<8>::from(123456)));
+/// let small = b10::BaseCount::<-11>::from(72);
+/// assert_eq!("0.72 n", format!("{small:#}"));
+///
+/// let large = b10::BaseCount::<8>::from(123456);
+/// assert_eq!("12345.6 G", format!("{large:#}"));
 /// ```
 impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1257,7 +1263,7 @@ mod fmt_tests {
         let x = Milli::from(42);
         assert_eq!("42E-3", format!("{x:E}"), "upper case");
         assert_eq!("42e-3", format!("{x:e}"), "lower case");
-        assert_eq!("42E-3", format!("{x:?}"), "as debug");
+        assert_eq!("42E-3", format!("{x:?}"), "from Debug");
 
         assert_eq!("+42E-3", format!("{x:+E}"), "tolerate +");
         assert_eq!("42e-3", format!("{x:-e}"), "tolerate -");
