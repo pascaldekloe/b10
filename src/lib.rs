@@ -249,14 +249,14 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// let price = b10::BaseCount::<-2>::from(100042);
     /// let fifty = b10::Natural::from(50);
     ///
-    /// let (part, rem) = price.quotient_int(fifty).unwrap();
+    /// let (part, rem) = price.quotient(fifty).unwrap();
     /// assert_eq!(
     ///     "1000.42 ÷ 50 is 20 with 0.42 remaining",
     ///     format!("{price} ÷ {fifty} is {part} with {rem} remaining"),
     /// );
     /// ```
     #[inline(always)]
-    pub fn quotient_int<const D: i8>(self, divisor: BaseCount<D>) -> Option<(u64, Self)> {
+    pub fn quotient<const D: i8>(self, divisor: BaseCount<D>) -> Option<(u64, Self)> {
         const {
             if D < EXP {
                 // could cause numeric overflows
@@ -356,7 +356,7 @@ mod tests {
             let da = Deci::from(a[i]);
             let db = Deca::from(b[i]);
 
-            match da.quotient_int(db) {
+            match da.quotient(db) {
                 None => assert_eq!(db, Deca::ZERO),
                 Some((quot, rem)) => {
                     assert_ne!(db, Deca::ZERO);
