@@ -229,7 +229,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     ) -> (BaseCount<P>, BaseCount<P>) {
         const {
             if P != EXP + M {
-                panic!("generic P does not equal generic EXP plus generic M");
+                panic!("generic EXP plus M goes not equal P");
             }
         }
         let (product, overflow) = self.c.widening_mul(multiplicant.c);
@@ -271,7 +271,7 @@ impl<const EXP: i8> BaseCount<EXP> {
         }
     }
 
-    /// Get the quotient and the remainder for divisor constant DIV.
+    /// Euclidian division of self with a constant DIVISOR.
     ///
     /// ```
     /// let price = b10::BaseCount::<-2>::from(299);
@@ -282,13 +282,48 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// );
     /// ```
     #[inline(always)]
-    pub fn quotient_const<const DIV: u64>(self) -> (Self, Self) {
+    pub fn quotient_const<const DIVISOR: u64>(self) -> (Self, Self) {
         const {
-            if DIV == 0 {
+            if DIVISOR == 0 {
                 panic!("zero divisor denied");
             }
         }
-        return (Self { c: self.c / DIV }, Self { c: self.c % DIV });
+        ((self.c / DIVISOR).into(), (self.c % DIVISOR).into())
+    }
+
+    /// Exponentiation of self with a constant POWER. The return is None when a
+    /// numeric overflow occurred.
+    ///
+    /// ```
+    /// let rib = b10::Milli::from(12);
+    /// let square = rib.power_const::<2, -6>().unwrap();
+    /// let cube = rib.power_const::<3, -9>().unwrap();
+    /// assert_eq!(
+    ///     "0.012² = 0.000144",
+    ///     format!("{rib}² = {square}"),
+    /// );
+    /// assert_eq!(
+    ///     "0.012³ = 0.000001728",
+    ///     format!("{rib}³ = {cube}"),
+    /// );
+    #[inline(always)]
+    pub fn power_const<const POWER: u32, const P: i8>(self) -> Option<BaseCount<P>> {
+        // compile-time checks
+        const {
+            if POWER == 0 {
+                panic!("to the power of 0 always is 1")
+            }
+            if POWER == 1 {
+                panic!("to the power of 1 is a no-op")
+            }
+            if POWER as i64 * EXP as i64 != P as i64 {
+                panic!("generic POWER times EXP does not equal P");
+            }
+        }
+        match self.c.checked_pow(POWER) {
+            None => None,
+            Some(p) => Some(p.into()),
+        }
     }
 }
 
