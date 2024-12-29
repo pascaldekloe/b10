@@ -193,6 +193,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///     format!("{a:?} − {a:?} = {0:?}", a.difference(a)),
     /// );
     /// ```
+    #[inline(always)]
     pub fn difference(self, subtrahend: Self) -> (Self, bool) {
         if self >= subtrahend {
             ((self.c - subtrahend.c).into(), false)
