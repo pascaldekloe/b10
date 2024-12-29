@@ -168,9 +168,9 @@ impl<const EXP: i8> BaseCount<EXP> {
         };
     }
 
-    /// Get the sum of both counts including an overflow flag. Calculation is
-    /// lossless. For any pair of arguments, self + summand = sum + overflow,
-    /// in which overflow represents 2⁶⁴ times the base \[`EXP`\].
+    /// Get the sum of both counts including an overflow flag. For any pair of
+    /// arguments, self + summand = sum + overflow, in which overflow is 2⁶⁴
+    /// times the base when `true`, or 0 when `false`.
     #[inline(always)]
     pub fn sum(self, summand: Self) -> (Self, bool) {
         let (sum, overflow) = self.c.overflowing_add(summand.c);
@@ -178,29 +178,26 @@ impl<const EXP: i8> BaseCount<EXP> {
     }
 
     /// Get the difference between both counts including a negative flag. For
-    /// any pair of arguments, either self − other = difference when negative is
-    /// `false`, or other − self = difference when negative is `true`.
+    /// any pair of arguments, self − subtrahend = difference × negative, in
+    /// which negative is −1 when `true`, or 1 when `false`.
     ///
     /// ```
-    /// let (a, b): (b10::Micro, b10::Micro) = (7.into(), 9.into());
-    /// assert_eq!((2.into(), true), a.difference(b));
-    /// assert_eq!((2.into(), false), b.difference(a));
+    /// let (a, b): (b10::Deca, b10::Deca) = (7.into(), 9.into());
+    /// assert_eq!(
+    ///     "7E1 − 9E1 = (2E1, true)",
+    ///     format!("{a:?} − {b:?} = {0:?}", a.difference(b)),
+    /// );
+    /// // zero is not negative
+    /// assert_eq!(
+    ///     "7E1 − 7E1 = (0E1, false)",
+    ///     format!("{a:?} − {a:?} = {0:?}", a.difference(a)),
+    /// );
     /// ```
-    pub fn difference(self, other: Self) -> (Self, bool) {
-        if self >= other {
-            (
-                Self {
-                    c: self.c - other.c,
-                },
-                false,
-            )
+    pub fn difference(self, subtrahend: Self) -> (Self, bool) {
+        if self >= subtrahend {
+            ((self.c - subtrahend.c).into(), false)
         } else {
-            (
-                Self {
-                    c: other.c - self.c,
-                },
-                true,
-            )
+            ((subtrahend.c - self.c).into(), true)
         }
     }
 
@@ -246,12 +243,12 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// overflows by design.
     ///
     /// ```
-    /// let price = b10::BaseCount::<-2>::from(100042);
+    /// let price = b10::BaseCount::<-2>::from(100420);
     /// let fifty = b10::Natural::from(50);
     ///
     /// let (part, rem) = price.quotient(fifty).unwrap();
     /// assert_eq!(
-    ///     "1000.42 ÷ 50 is 20 with 0.42 remaining",
+    ///     "1004.20 ÷ 50 is 20 with 4.20 remaining",
     ///     format!("{price} ÷ {fifty} is {part} with {rem} remaining"),
     /// );
     /// ```
