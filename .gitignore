@@ -1,2 +1,5 @@
-/Cargo.lock
-/target
+Cargo.lock
+target
+
+# fuzzer states are local for now
+fuzz/*/run
