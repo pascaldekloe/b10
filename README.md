@@ -43,5 +43,27 @@ assert_eq!(
 );
 ```
 
+Formatting and parsing performance is on par with the Display and FromStr traits
+of the standard library.
+
+```
+test fmt_tests::format_exponent_kilo       ... bench:          10.00 ns/iter (+/- 0.10)
+test fmt_tests::format_exponent_u64        ... bench:           9.38 ns/iter (+/- 0.05)
+test fmt_tests::format_fraction_milli      ... bench:           9.70 ns/iter (+/- 0.06)
+test fmt_tests::format_fraction_u64        ... bench:          18.63 ns/iter (+/- 0.44)
+test fmt_tests::format_integer_natural     ... bench:          12.40 ns/iter (+/- 4.52)
+test fmt_tests::format_integer_u64         ... bench:           8.49 ns/iter (+/- 0.03)
+test fmt_tests::format_sub_zero_quecto     ... bench:           8.76 ns/iter (+/- 0.06)
+test fmt_tests::format_sub_zero_u64        ... bench:          22.50 ns/iter (+/- 0.14)
+test text_tests::parse_bench_overhead      ... bench:           3.78 ns/iter (+/- 0.04)
+test text_tests::parse_exponents_as_f64    ... bench:          29.58 ns/iter (+/- 0.27)
+test text_tests::parse_exponents_as_pico   ... bench:          16.50 ns/iter (+/- 0.48)
+test text_tests::parse_fractions_as_f64    ... bench:          28.10 ns/iter (+/- 0.18)
+test text_tests::parse_fractions_as_nano   ... bench:          15.95 ns/iter (+/- 0.23)
+test text_tests::parse_integers_as_centi   ... bench:          14.11 ns/iter (+/- 0.04)
+test text_tests::parse_integers_as_natural ... bench:          13.44 ns/iter (+/- 0.10)
+test text_tests::parse_integers_as_u64     ... bench:          14.22 ns/iter (+/- 0.42)
+```
+
 This is free and unencumbered software released into the
 [public domain](https://creativecommons.org/publicdomain/zero/1.0).

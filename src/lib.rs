@@ -2,6 +2,9 @@
 #![feature(ascii_char_variants)]
 #![feature(bigint_helper_methods)]
 #![feature(strict_overflow_ops)]
+#![feature(test)]
+
+extern crate test;
 
 use std::ascii::Char;
 use std::convert::From;
@@ -908,11 +911,587 @@ impl<const EXP: i8> BaseCount<EXP> {
             -128 => write!(f, "{} q", BaseCount::<-98>::from(self.c)),
         }
     }
+
+    const fn upper_exp() -> &'static str {
+        match const { EXP } {
+            0 => "E0",
+            1 => "E1",
+            2 => "E2",
+            3 => "E3",
+            4 => "E4",
+            5 => "E5",
+            6 => "E6",
+            7 => "E7",
+            8 => "E8",
+            9 => "E9",
+
+            10 => "E10",
+            11 => "E11",
+            12 => "E12",
+            13 => "E13",
+            14 => "E14",
+            15 => "E15",
+            16 => "E16",
+            17 => "E17",
+            18 => "E18",
+            19 => "E19",
+
+            20 => "E20",
+            21 => "E21",
+            22 => "E22",
+            23 => "E23",
+            24 => "E24",
+            25 => "E25",
+            26 => "E26",
+            27 => "E27",
+            28 => "E28",
+            29 => "E29",
+
+            30 => "E30",
+            31 => "E31",
+            32 => "E32",
+            33 => "E33",
+            34 => "E34",
+            35 => "E35",
+            36 => "E36",
+            37 => "E37",
+            38 => "E38",
+            39 => "E39",
+
+            40 => "E40",
+            41 => "E41",
+            42 => "E42",
+            43 => "E43",
+            44 => "E44",
+            45 => "E45",
+            46 => "E46",
+            47 => "E47",
+            48 => "E48",
+            49 => "E49",
+
+            50 => "E50",
+            51 => "E51",
+            52 => "E52",
+            53 => "E53",
+            54 => "E54",
+            55 => "E55",
+            56 => "E56",
+            57 => "E57",
+            58 => "E58",
+            59 => "E59",
+
+            60 => "E60",
+            61 => "E61",
+            62 => "E62",
+            63 => "E63",
+            64 => "E64",
+            65 => "E65",
+            66 => "E66",
+            67 => "E67",
+            68 => "E68",
+            69 => "E69",
+
+            70 => "E70",
+            71 => "E71",
+            72 => "E72",
+            73 => "E73",
+            74 => "E74",
+            75 => "E75",
+            76 => "E76",
+            77 => "E77",
+            78 => "E78",
+            79 => "E79",
+
+            80 => "E80",
+            81 => "E81",
+            82 => "E82",
+            83 => "E83",
+            84 => "E84",
+            85 => "E85",
+            86 => "E86",
+            87 => "E87",
+            88 => "E88",
+            89 => "E89",
+
+            90 => "E90",
+            91 => "E91",
+            92 => "E92",
+            93 => "E93",
+            94 => "E94",
+            95 => "E95",
+            96 => "E96",
+            97 => "E97",
+            98 => "E98",
+            99 => "E99",
+
+            100 => "E100",
+            101 => "E101",
+            102 => "E102",
+            103 => "E103",
+            104 => "E104",
+            105 => "E105",
+            106 => "E106",
+            107 => "E107",
+            108 => "E108",
+            109 => "E109",
+
+            110 => "E110",
+            111 => "E111",
+            112 => "E112",
+            113 => "E113",
+            114 => "E114",
+            115 => "E115",
+            116 => "E116",
+            117 => "E117",
+            118 => "E118",
+            119 => "E119",
+
+            120 => "E120",
+            121 => "E121",
+            122 => "E122",
+            123 => "E123",
+            124 => "E124",
+            125 => "E125",
+            126 => "E126",
+            127 => "E127",
+
+            -1 => "E-1",
+            -2 => "E-2",
+            -3 => "E-3",
+            -4 => "E-4",
+            -5 => "E-5",
+            -6 => "E-6",
+            -7 => "E-7",
+            -8 => "E-8",
+            -9 => "E-9",
+
+            -10 => "E-10",
+            -11 => "E-11",
+            -12 => "E-12",
+            -13 => "E-13",
+            -14 => "E-14",
+            -15 => "E-15",
+            -16 => "E-16",
+            -17 => "E-17",
+            -18 => "E-18",
+            -19 => "E-19",
+
+            -20 => "E-20",
+            -21 => "E-21",
+            -22 => "E-22",
+            -23 => "E-23",
+            -24 => "E-24",
+            -25 => "E-25",
+            -26 => "E-26",
+            -27 => "E-27",
+            -28 => "E-28",
+            -29 => "E-29",
+
+            -30 => "E-30",
+            -31 => "E-31",
+            -32 => "E-32",
+            -33 => "E-33",
+            -34 => "E-34",
+            -35 => "E-35",
+            -36 => "E-36",
+            -37 => "E-37",
+            -38 => "E-38",
+            -39 => "E-39",
+
+            -40 => "E-40",
+            -41 => "E-41",
+            -42 => "E-42",
+            -43 => "E-43",
+            -44 => "E-44",
+            -45 => "E-45",
+            -46 => "E-46",
+            -47 => "E-47",
+            -48 => "E-48",
+            -49 => "E-49",
+
+            -50 => "E-50",
+            -51 => "E-51",
+            -52 => "E-52",
+            -53 => "E-53",
+            -54 => "E-54",
+            -55 => "E-55",
+            -56 => "E-56",
+            -57 => "E-57",
+            -58 => "E-58",
+            -59 => "E-59",
+
+            -60 => "E-60",
+            -61 => "E-61",
+            -62 => "E-62",
+            -63 => "E-63",
+            -64 => "E-64",
+            -65 => "E-65",
+            -66 => "E-66",
+            -67 => "E-67",
+            -68 => "E-68",
+            -69 => "E-69",
+
+            -70 => "E-70",
+            -71 => "E-71",
+            -72 => "E-72",
+            -73 => "E-73",
+            -74 => "E-74",
+            -75 => "E-75",
+            -76 => "E-76",
+            -77 => "E-77",
+            -78 => "E-78",
+            -79 => "E-79",
+
+            -80 => "E-80",
+            -81 => "E-81",
+            -82 => "E-82",
+            -83 => "E-83",
+            -84 => "E-84",
+            -85 => "E-85",
+            -86 => "E-86",
+            -87 => "E-87",
+            -88 => "E-88",
+            -89 => "E-89",
+
+            -90 => "E-90",
+            -91 => "E-91",
+            -92 => "E-92",
+            -93 => "E-93",
+            -94 => "E-94",
+            -95 => "E-95",
+            -96 => "E-96",
+            -97 => "E-97",
+            -98 => "E-98",
+            -99 => "E-99",
+
+            -100 => "E-100",
+            -101 => "E-101",
+            -102 => "E-102",
+            -103 => "E-103",
+            -104 => "E-104",
+            -105 => "E-105",
+            -106 => "E-106",
+            -107 => "E-107",
+            -108 => "E-108",
+            -109 => "E-109",
+
+            -110 => "E-110",
+            -111 => "E-111",
+            -112 => "E-112",
+            -113 => "E-113",
+            -114 => "E-114",
+            -115 => "E-115",
+            -116 => "E-116",
+            -117 => "E-117",
+            -118 => "E-118",
+            -119 => "E-119",
+
+            -120 => "E-120",
+            -121 => "E-121",
+            -122 => "E-122",
+            -123 => "E-123",
+            -124 => "E-124",
+            -125 => "E-125",
+            -126 => "E-126",
+            -127 => "E-127",
+            -128 => "E-128",
+        }
+    }
+
+    const fn lower_exp() -> &'static str {
+        match const { EXP } {
+            0 => "e0",
+            1 => "e1",
+            2 => "e2",
+            3 => "e3",
+            4 => "e4",
+            5 => "e5",
+            6 => "e6",
+            7 => "e7",
+            8 => "e8",
+            9 => "e9",
+
+            10 => "e10",
+            11 => "e11",
+            12 => "e12",
+            13 => "e13",
+            14 => "e14",
+            15 => "e15",
+            16 => "e16",
+            17 => "e17",
+            18 => "e18",
+            19 => "e19",
+
+            20 => "e20",
+            21 => "e21",
+            22 => "e22",
+            23 => "e23",
+            24 => "e24",
+            25 => "e25",
+            26 => "e26",
+            27 => "e27",
+            28 => "e28",
+            29 => "e29",
+
+            30 => "e30",
+            31 => "e31",
+            32 => "e32",
+            33 => "e33",
+            34 => "e34",
+            35 => "e35",
+            36 => "e36",
+            37 => "e37",
+            38 => "e38",
+            39 => "e39",
+
+            40 => "e40",
+            41 => "e41",
+            42 => "e42",
+            43 => "e43",
+            44 => "e44",
+            45 => "e45",
+            46 => "e46",
+            47 => "e47",
+            48 => "e48",
+            49 => "e49",
+
+            50 => "e50",
+            51 => "e51",
+            52 => "e52",
+            53 => "e53",
+            54 => "e54",
+            55 => "e55",
+            56 => "e56",
+            57 => "e57",
+            58 => "e58",
+            59 => "e59",
+
+            60 => "e60",
+            61 => "e61",
+            62 => "e62",
+            63 => "e63",
+            64 => "e64",
+            65 => "e65",
+            66 => "e66",
+            67 => "e67",
+            68 => "e68",
+            69 => "e69",
+
+            70 => "e70",
+            71 => "e71",
+            72 => "e72",
+            73 => "e73",
+            74 => "e74",
+            75 => "e75",
+            76 => "e76",
+            77 => "e77",
+            78 => "e78",
+            79 => "e79",
+
+            80 => "e80",
+            81 => "e81",
+            82 => "e82",
+            83 => "e83",
+            84 => "e84",
+            85 => "e85",
+            86 => "e86",
+            87 => "e87",
+            88 => "e88",
+            89 => "e89",
+
+            90 => "e90",
+            91 => "e91",
+            92 => "e92",
+            93 => "e93",
+            94 => "e94",
+            95 => "e95",
+            96 => "e96",
+            97 => "e97",
+            98 => "e98",
+            99 => "e99",
+
+            100 => "e100",
+            101 => "e101",
+            102 => "e102",
+            103 => "e103",
+            104 => "e104",
+            105 => "e105",
+            106 => "e106",
+            107 => "e107",
+            108 => "e108",
+            109 => "e109",
+
+            110 => "e110",
+            111 => "e111",
+            112 => "e112",
+            113 => "e113",
+            114 => "e114",
+            115 => "e115",
+            116 => "e116",
+            117 => "e117",
+            118 => "e118",
+            119 => "e119",
+
+            120 => "e120",
+            121 => "e121",
+            122 => "e122",
+            123 => "e123",
+            124 => "e124",
+            125 => "e125",
+            126 => "e126",
+            127 => "e127",
+
+            -1 => "e-1",
+            -2 => "e-2",
+            -3 => "e-3",
+            -4 => "e-4",
+            -5 => "e-5",
+            -6 => "e-6",
+            -7 => "e-7",
+            -8 => "e-8",
+            -9 => "e-9",
+
+            -10 => "e-10",
+            -11 => "e-11",
+            -12 => "e-12",
+            -13 => "e-13",
+            -14 => "e-14",
+            -15 => "e-15",
+            -16 => "e-16",
+            -17 => "e-17",
+            -18 => "e-18",
+            -19 => "e-19",
+
+            -20 => "e-20",
+            -21 => "e-21",
+            -22 => "e-22",
+            -23 => "e-23",
+            -24 => "e-24",
+            -25 => "e-25",
+            -26 => "e-26",
+            -27 => "e-27",
+            -28 => "e-28",
+            -29 => "e-29",
+
+            -30 => "e-30",
+            -31 => "e-31",
+            -32 => "e-32",
+            -33 => "e-33",
+            -34 => "e-34",
+            -35 => "e-35",
+            -36 => "e-36",
+            -37 => "e-37",
+            -38 => "e-38",
+            -39 => "e-39",
+
+            -40 => "e-40",
+            -41 => "e-41",
+            -42 => "e-42",
+            -43 => "e-43",
+            -44 => "e-44",
+            -45 => "e-45",
+            -46 => "e-46",
+            -47 => "e-47",
+            -48 => "e-48",
+            -49 => "e-49",
+
+            -50 => "e-50",
+            -51 => "e-51",
+            -52 => "e-52",
+            -53 => "e-53",
+            -54 => "e-54",
+            -55 => "e-55",
+            -56 => "e-56",
+            -57 => "e-57",
+            -58 => "e-58",
+            -59 => "e-59",
+
+            -60 => "e-60",
+            -61 => "e-61",
+            -62 => "e-62",
+            -63 => "e-63",
+            -64 => "e-64",
+            -65 => "e-65",
+            -66 => "e-66",
+            -67 => "e-67",
+            -68 => "e-68",
+            -69 => "e-69",
+
+            -70 => "e-70",
+            -71 => "e-71",
+            -72 => "e-72",
+            -73 => "e-73",
+            -74 => "e-74",
+            -75 => "e-75",
+            -76 => "e-76",
+            -77 => "e-77",
+            -78 => "e-78",
+            -79 => "e-79",
+
+            -80 => "e-80",
+            -81 => "e-81",
+            -82 => "e-82",
+            -83 => "e-83",
+            -84 => "e-84",
+            -85 => "e-85",
+            -86 => "e-86",
+            -87 => "e-87",
+            -88 => "e-88",
+            -89 => "e-89",
+
+            -90 => "e-90",
+            -91 => "e-91",
+            -92 => "e-92",
+            -93 => "e-93",
+            -94 => "e-94",
+            -95 => "e-95",
+            -96 => "e-96",
+            -97 => "e-97",
+            -98 => "e-98",
+            -99 => "e-99",
+
+            -100 => "e-100",
+            -101 => "e-101",
+            -102 => "e-102",
+            -103 => "e-103",
+            -104 => "e-104",
+            -105 => "e-105",
+            -106 => "e-106",
+            -107 => "e-107",
+            -108 => "e-108",
+            -109 => "e-109",
+
+            -110 => "e-110",
+            -111 => "e-111",
+            -112 => "e-112",
+            -113 => "e-113",
+            -114 => "e-114",
+            -115 => "e-115",
+            -116 => "e-116",
+            -117 => "e-117",
+            -118 => "e-118",
+            -119 => "e-119",
+
+            -120 => "e-120",
+            -121 => "e-121",
+            -122 => "e-122",
+            -123 => "e-123",
+            -124 => "e-124",
+            -125 => "e-125",
+            -126 => "e-126",
+            -127 => "e-127",
+            -128 => "e-128",
+        }
+    }
 }
 
 #[cfg(test)]
 mod text_tests {
     use super::*;
+
+    use std::str::FromStr;
+    use test::bench::black_box;
+    use test::Bencher;
 
     // Verify the DOUBLE_DIGIT_TABLE content in full.
     #[test]
@@ -1136,6 +1715,125 @@ mod text_tests {
         assert_eq!("r", Ronto::metric_prefix());
         assert_eq!("q", Quecto::metric_prefix());
     }
+
+    /// The overhead should be deducted from all parse_ benchmarks.
+    #[bench]
+    fn parse_bench_overhead(b: &mut Bencher) {
+        let mut texts = BenchTexts::new("a", "bb", "ccc", "dddd");
+        b.iter(|| {
+            texts.seed(texts.next().len() as u64);
+        });
+        black_box(texts);
+    }
+
+    /// Standard u64 parsing is the baseline.
+    #[bench]
+    fn parse_integers_as_u64(b: &mut Bencher) {
+        let mut texts = BenchTexts::new("1", "10", "1000", "987654321");
+        b.iter(|| {
+            let text = texts.next();
+            let got = u64::from_str(text).unwrap();
+            texts.seed(got);
+        });
+        black_box(texts);
+    }
+
+    #[bench]
+    fn parse_integers_as_natural(b: &mut Bencher) {
+        let mut texts = BenchTexts::new("1", "10", "1000", "987654321");
+        b.iter(|| {
+            let text = texts.next();
+            let (c, read_n) = Natural::parse(text.as_bytes());
+            assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
+            texts.seed(c.into());
+        });
+        black_box(texts);
+    }
+
+    #[bench]
+    fn parse_integers_as_centi(b: &mut Bencher) {
+        let mut texts = BenchTexts::new("1", "10", "1000", "987654321");
+        b.iter(|| {
+            let text = texts.next();
+            let (c, read_n) = Centi::parse(text.as_bytes());
+            assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
+            texts.seed(c.into());
+        });
+        black_box(texts);
+    }
+
+    /// Standard f64 parsing is the baseline.
+    #[bench]
+    fn parse_fractions_as_f64(b: &mut Bencher) {
+        let mut texts = BenchTexts::new("1", "2003", "0.409", "987.654321");
+        b.iter(|| {
+            let text = texts.next();
+            let got = f64::from_str(text).unwrap();
+            texts.seed(got.to_bits());
+        });
+        black_box(texts);
+    }
+
+    #[bench]
+    fn parse_fractions_as_nano(b: &mut Bencher) {
+        let mut texts = BenchTexts::new("1", "2003", "0.409", "987.654321");
+        b.iter(|| {
+            let text = texts.next();
+            let (c, read_n) = Nano::parse(text.as_bytes());
+            assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
+            texts.seed(c.into());
+        });
+        black_box(texts);
+    }
+
+    /// Standard f64 parsing is the baseline.
+    #[bench]
+    fn parse_exponents_as_f64(b: &mut Bencher) {
+        let mut texts = BenchTexts::new("1E0", "30E-12", "0.409E-3", "98.7654e3");
+        b.iter(|| {
+            let text = texts.next();
+            let got = f64::from_str(text).unwrap();
+            texts.seed(got.to_bits());
+        });
+        black_box(texts);
+    }
+
+    #[bench]
+    fn parse_exponents_as_pico(b: &mut Bencher) {
+        let mut texts = BenchTexts::new("1E0", "30E-12", "0.409E-3", "98.7654e3");
+        b.iter(|| {
+            let text = texts.next();
+            let (c, read_n) = Pico::parse(text.as_bytes());
+            assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
+            texts.seed(c.into());
+        });
+        black_box(texts);
+    }
+}
+
+// BenchTexts provides strings in non-predicable order.
+struct BenchTexts {
+    texts: [&'static str; 4],
+    fnv: usize, // light hash is enough
+}
+
+impl BenchTexts {
+    fn new(a: &'static str, b: &'static str, c: &'static str, d: &'static str) -> Self {
+        Self {
+            texts: [a, b, c, d],
+            fnv: 2166136261,
+        }
+    }
+
+    fn next(&self) -> &'static str {
+        let prnd = self.fnv ^ (self.fnv >> 32);
+        self.texts[prnd % self.texts.len()]
+    }
+
+    fn seed(&mut self, x: u64) {
+        self.fnv *= 16777619;
+        self.fnv ^= (x ^ (x >> 32)) as usize;
+    }
 }
 
 /// Display the number in plain-decimal notation. Any EXP above zero causes E
@@ -1203,7 +1901,7 @@ impl<const EXP: i8> fmt::Debug for BaseCount<EXP> {
 impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <u64 as fmt::Display>::fmt(&self.c, f)?;
-        write!(f, "e{EXP}")
+        f.write_str(BaseCount::<{ EXP }>::lower_exp())
     }
 }
 
@@ -1211,13 +1909,16 @@ impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
 impl<const EXP: i8> fmt::UpperExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <u64 as fmt::Display>::fmt(&self.c, f)?;
-        write!(f, "E{EXP}")
+        f.write_str(BaseCount::<{ EXP }>::upper_exp())
     }
 }
 
 #[cfg(test)]
 mod fmt_tests {
     use super::*;
+
+    use std::io::Write;
+    use test::Bencher;
 
     #[test]
     fn least_significant_digit() {
@@ -1357,5 +2058,99 @@ mod fmt_tests {
         assert_eq!("0.00000", format!("{frac}"));
         assert_eq!("0.00 m", format!("{frac:#}"));
         assert_eq!("0e-5", format!("{frac:e}"));
+    }
+
+    /// Standard u64 formatting is the baseline.
+    #[bench]
+    fn format_integer_u64(b: &mut Bencher) {
+        let mut discard = std::io::sink();
+        let mut n: u64 = 0;
+        b.iter(|| {
+            write!(discard, "{n}").unwrap();
+            n += 1;
+        });
+    }
+
+    /// Speed should be similar to [format_integer_u64].
+    #[bench]
+    fn format_integer_natural(b: &mut Bencher) {
+        let mut discard = std::io::sink();
+        let mut n: u64 = 0;
+        b.iter(|| {
+            let count = Natural::from(n);
+            write!(discard, "{count}").unwrap();
+            n += 1;
+        });
+    }
+
+    /// Standard u64 formatting is the baseline.
+    #[bench]
+    fn format_sub_zero_u64(b: &mut Bencher) {
+        let mut discard = std::io::sink();
+        let mut n: u64 = 0;
+        b.iter(|| {
+            write!(discard, "0.0000000000{n:020}").unwrap();
+            n += 1;
+        });
+    }
+
+    /// Speed should be similar to [format_sub_zero_u64].
+    #[bench]
+    fn format_sub_zero_quecto(b: &mut Bencher) {
+        let mut discard = std::io::sink();
+        let mut n: u64 = 0;
+        b.iter(|| {
+            let count = Quecto::from(n);
+            write!(discard, "{count}").unwrap();
+            n += 1;
+        });
+    }
+
+    /// Standard u64 formatting is the baseline.
+    #[bench]
+    fn format_fraction_u64(b: &mut Bencher) {
+        let mut discard = std::io::sink();
+        let mut n: u64 = 0;
+        b.iter(|| {
+            let int = n / 1000;
+            let frac = n % 1000;
+            write!(discard, "{int}.{frac:03}").unwrap();
+            n += 1;
+        });
+    }
+
+    /// Speed should be better than [format_fraction_u64].
+    #[bench]
+    fn format_fraction_milli(b: &mut Bencher) {
+        let mut discard = std::io::sink();
+        let mut n: u64 = 0;
+        b.iter(|| {
+            let count = Milli::from(n);
+            write!(discard, "{count}").unwrap();
+            n += 1;
+        });
+    }
+
+    /// Standard u64 formatting is the baseline.
+    #[bench]
+    fn format_exponent_u64(b: &mut Bencher) {
+        let mut discard = std::io::sink();
+        let mut n: u64 = 0;
+        b.iter(|| {
+            write!(discard, "{n}E3").unwrap();
+            n += 1;
+        });
+    }
+
+    /// Speed should be similar to [format_exponent_u64].
+    #[bench]
+    fn format_exponent_kilo(b: &mut Bencher) {
+        let mut discard = std::io::sink();
+        let mut n: u64 = 0;
+        b.iter(|| {
+            let count = Kilo::from(n);
+            write!(discard, "{count:E}").unwrap();
+            n += 1;
+        });
     }
 }
