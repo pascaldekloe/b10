@@ -1716,123 +1716,94 @@ mod text_tests {
         assert_eq!("q", Quecto::metric_prefix());
     }
 
-    /// The overhead should be deducted from all parse_ benchmarks.
-    #[bench]
-    fn parse_bench_overhead(b: &mut Bencher) {
-        let mut texts = BenchTexts::new("a", "bb", "ccc", "dddd");
-        b.iter(|| {
-            texts.seed(texts.next().len() as u64);
-        });
-        black_box(texts);
-    }
+    const INTEGER_TEXTS: [&str; 4] = ["1", "10", "1000", "987654321"];
 
     /// Standard u64 parsing is the baseline.
     #[bench]
     fn parse_integers_as_u64(b: &mut Bencher) {
-        let mut texts = BenchTexts::new("1", "10", "1000", "987654321");
+        let mut n: usize = 0;
         b.iter(|| {
-            let text = texts.next();
-            let got = u64::from_str(text).unwrap();
-            texts.seed(got);
+            n += 1;
+            let text = black_box(INTEGER_TEXTS[n % INTEGER_TEXTS.len()]);
+            let got = black_box(u64::from_str(text)).unwrap();
+            assert_ne!(got, 0);
         });
-        black_box(texts);
     }
 
     #[bench]
     fn parse_integers_as_natural(b: &mut Bencher) {
-        let mut texts = BenchTexts::new("1", "10", "1000", "987654321");
+        let mut n: usize = 0;
         b.iter(|| {
-            let text = texts.next();
-            let (c, read_n) = Natural::parse(text.as_bytes());
+            n += 1;
+            let text = black_box(INTEGER_TEXTS[n % INTEGER_TEXTS.len()]);
+            let (got, read_n) = black_box(Natural::parse(text.as_bytes()));
             assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
-            texts.seed(c.into());
+            assert_ne!(got, Natural::ZERO);
         });
-        black_box(texts);
     }
 
     #[bench]
     fn parse_integers_as_centi(b: &mut Bencher) {
-        let mut texts = BenchTexts::new("1", "10", "1000", "987654321");
+        let mut n: usize = 0;
         b.iter(|| {
-            let text = texts.next();
-            let (c, read_n) = Centi::parse(text.as_bytes());
+            n += 1;
+            let text = black_box(INTEGER_TEXTS[n % INTEGER_TEXTS.len()]);
+            let (got, read_n) = black_box(Centi::parse(text.as_bytes()));
             assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
-            texts.seed(c.into());
+            assert_ne!(got, Centi::ZERO);
         });
-        black_box(texts);
     }
+
+    const FRACTION_TEXTS: [&str; 4] = ["1", "2003", "0.409", "987.654321"];
 
     /// Standard f64 parsing is the baseline.
     #[bench]
     fn parse_fractions_as_f64(b: &mut Bencher) {
-        let mut texts = BenchTexts::new("1", "2003", "0.409", "987.654321");
+        let mut n: usize = 0;
         b.iter(|| {
-            let text = texts.next();
-            let got = f64::from_str(text).unwrap();
-            texts.seed(got.to_bits());
+            n += 1;
+            let text = black_box(FRACTION_TEXTS[n % FRACTION_TEXTS.len()]);
+            let got = black_box(f64::from_str(text)).unwrap();
+            assert_ne!(got, 0.0);
         });
-        black_box(texts);
     }
 
     #[bench]
     fn parse_fractions_as_nano(b: &mut Bencher) {
-        let mut texts = BenchTexts::new("1", "2003", "0.409", "987.654321");
+        let mut n: usize = 0;
         b.iter(|| {
-            let text = texts.next();
-            let (c, read_n) = Nano::parse(text.as_bytes());
+            n += 1;
+            let text = black_box(FRACTION_TEXTS[n % FRACTION_TEXTS.len()]);
+            let (got, read_n) = black_box(Nano::parse(text.as_bytes()));
             assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
-            texts.seed(c.into());
+            assert_ne!(got, Nano::ZERO);
         });
-        black_box(texts);
     }
+
+    const EXPONENT_TEXTS: [&str; 4] = ["1E0", "30E-12", "0.409E-3", "98.7654e3"];
 
     /// Standard f64 parsing is the baseline.
     #[bench]
     fn parse_exponents_as_f64(b: &mut Bencher) {
-        let mut texts = BenchTexts::new("1E0", "30E-12", "0.409E-3", "98.7654e3");
+        let mut n: usize = 0;
         b.iter(|| {
-            let text = texts.next();
-            let got = f64::from_str(text).unwrap();
-            texts.seed(got.to_bits());
+            n += 1;
+            let text = black_box(EXPONENT_TEXTS[n % EXPONENT_TEXTS.len()]);
+            let got = black_box(f64::from_str(text)).unwrap();
+            assert_ne!(got, 0.0);
         });
-        black_box(texts);
     }
 
     #[bench]
     fn parse_exponents_as_pico(b: &mut Bencher) {
-        let mut texts = BenchTexts::new("1E0", "30E-12", "0.409E-3", "98.7654e3");
+        let mut n: usize = 0;
         b.iter(|| {
-            let text = texts.next();
-            let (c, read_n) = Pico::parse(text.as_bytes());
+            n += 1;
+            let text = black_box(EXPONENT_TEXTS[n % EXPONENT_TEXTS.len()]);
+            let (got, read_n) = black_box(Pico::parse(text.as_bytes()));
             assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
-            texts.seed(c.into());
+            assert_ne!(got, Pico::ZERO);
         });
-        black_box(texts);
-    }
-}
-
-// BenchTexts provides strings in non-predicable order.
-struct BenchTexts {
-    texts: [&'static str; 4],
-    fnv: usize, // light hash is enough
-}
-
-impl BenchTexts {
-    fn new(a: &'static str, b: &'static str, c: &'static str, d: &'static str) -> Self {
-        Self {
-            texts: [a, b, c, d],
-            fnv: 2166136261,
-        }
-    }
-
-    fn next(&self) -> &'static str {
-        let prnd = self.fnv ^ (self.fnv >> 32);
-        self.texts[prnd % self.texts.len()]
-    }
-
-    fn seed(&mut self, x: u64) {
-        self.fnv *= 16777619;
-        self.fnv ^= (x ^ (x >> 32)) as usize;
     }
 }
 
@@ -1918,6 +1889,7 @@ mod fmt_tests {
     use super::*;
 
     use std::io::Write;
+    use test::bench::black_box;
     use test::Bencher;
 
     #[test]
@@ -2063,57 +2035,60 @@ mod fmt_tests {
     /// Standard u64 formatting is the baseline.
     #[bench]
     fn format_integer_u64(b: &mut Bencher) {
-        let mut discard = std::io::sink();
+        let mut discard = black_box(std::io::sink());
         let mut n: u64 = 0;
         b.iter(|| {
-            write!(discard, "{n}").unwrap();
             n += 1;
+            let x = black_box(n);
+            write!(discard, "{x}").unwrap();
         });
     }
 
     /// Speed should be similar to [format_integer_u64].
     #[bench]
     fn format_integer_natural(b: &mut Bencher) {
-        let mut discard = std::io::sink();
+        let mut discard = black_box(std::io::sink());
         let mut n: u64 = 0;
         b.iter(|| {
-            let count = Natural::from(n);
-            write!(discard, "{count}").unwrap();
             n += 1;
+            let count = black_box(Natural::from(n));
+            write!(discard, "{count}").unwrap();
         });
     }
 
     /// Standard u64 formatting is the baseline.
     #[bench]
     fn format_sub_zero_u64(b: &mut Bencher) {
-        let mut discard = std::io::sink();
+        let mut discard = black_box(std::io::sink());
         let mut n: u64 = 0;
         b.iter(|| {
-            write!(discard, "0.0000000000{n:020}").unwrap();
             n += 1;
+            let x = black_box(n);
+            write!(discard, "0.0000000000{x:020}").unwrap();
         });
     }
 
     /// Speed should be similar to [format_sub_zero_u64].
     #[bench]
     fn format_sub_zero_quecto(b: &mut Bencher) {
-        let mut discard = std::io::sink();
+        let mut discard = black_box(std::io::sink());
         let mut n: u64 = 0;
         b.iter(|| {
-            let count = Quecto::from(n);
-            write!(discard, "{count}").unwrap();
             n += 1;
+            let count = black_box(Quecto::from(n));
+            write!(discard, "{count}").unwrap();
         });
     }
 
     /// Standard u64 formatting is the baseline.
     #[bench]
     fn format_fraction_u64(b: &mut Bencher) {
-        let mut discard = std::io::sink();
+        let mut discard = black_box(std::io::sink());
         let mut n: u64 = 0;
         b.iter(|| {
-            let int = n / 1000;
-            let frac = n % 1000;
+            let x = black_box(n);
+            let int = x / 1000;
+            let frac = x % 1000;
             write!(discard, "{int}.{frac:03}").unwrap();
             n += 1;
         });
@@ -2122,35 +2097,36 @@ mod fmt_tests {
     /// Speed should be better than [format_fraction_u64].
     #[bench]
     fn format_fraction_milli(b: &mut Bencher) {
-        let mut discard = std::io::sink();
+        let mut discard = black_box(std::io::sink());
         let mut n: u64 = 0;
         b.iter(|| {
-            let count = Milli::from(n);
-            write!(discard, "{count}").unwrap();
             n += 1;
+            let count = black_box(Milli::from(n));
+            write!(discard, "{count}").unwrap();
         });
     }
 
     /// Standard u64 formatting is the baseline.
     #[bench]
     fn format_exponent_u64(b: &mut Bencher) {
-        let mut discard = std::io::sink();
+        let mut discard = black_box(std::io::sink());
         let mut n: u64 = 0;
         b.iter(|| {
-            write!(discard, "{n}E3").unwrap();
             n += 1;
+            let x = black_box(n);
+            write!(discard, "{x}E3").unwrap();
         });
     }
 
     /// Speed should be similar to [format_exponent_u64].
     #[bench]
     fn format_exponent_kilo(b: &mut Bencher) {
-        let mut discard = std::io::sink();
+        let mut discard = black_box(std::io::sink());
         let mut n: u64 = 0;
         b.iter(|| {
-            let count = Kilo::from(n);
-            write!(discard, "{count:E}").unwrap();
             n += 1;
+            let count = black_box(Kilo::from(n));
+            write!(discard, "{count:E}").unwrap();
         });
     }
 }
