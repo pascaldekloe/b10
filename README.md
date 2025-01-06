@@ -59,9 +59,10 @@ test text_tests::parse_exponents_as_f64    ... bench:           9.05 ns/iter (+/
 test text_tests::parse_exponents_as_pico   ... bench:           8.65 ns/iter (+/- 0.34)
 test text_tests::parse_fractions_as_f64    ... bench:           7.66 ns/iter (+/- 0.05)
 test text_tests::parse_fractions_as_nano   ... bench:           6.64 ns/iter (+/- 0.29)
-test text_tests::parse_integers_as_centi   ... bench:           5.00 ns/iter (+/- 0.02)
-test text_tests::parse_integers_as_natural ... bench:           5.00 ns/iter (+/- 0.02)
-test text_tests::parse_integers_as_u64     ... bench:           3.13 ns/iter (+/- 0.03)
+test text_tests::parse_integers_as_centi   ... bench:           3.75 ns/iter (+/- 0.01)
+test text_tests::parse_integers_as_natural ... bench:           3.75 ns/iter (+/- 0.04)
+test text_tests::parse_integers_as_u64     ... bench:           3.13 ns/iter (+/- 0.13)
+
 ```
 
 This is free and unencumbered software released into the

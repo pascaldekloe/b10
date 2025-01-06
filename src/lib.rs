@@ -617,15 +617,6 @@ impl<const EXP: i8> BaseCount<EXP> {
             let c = text[i];
 
             match c {
-                // decimal separator
-                b'.' => {
-                    if fraction_offset != 0 {
-                        // two separators
-                        return (0, 0, 0);
-                    }
-                    fraction_offset = i + 1;
-                }
-
                 b'0'..=b'9' => {
                     let digit = c as u64 - b'0' as u64;
                     if num >= u64::MAX / 10 && (num > u64::MAX / 10 || digit > 5) {
@@ -633,6 +624,15 @@ impl<const EXP: i8> BaseCount<EXP> {
                         return (0, 0, 0);
                     }
                     num = num * 10 + digit;
+                }
+
+                // decimal separator
+                b'.' => {
+                    if fraction_offset != 0 {
+                        // two separators
+                        return (0, 0, 0);
+                    }
+                    fraction_offset = i + 1;
                 }
 
                 _ => break,
