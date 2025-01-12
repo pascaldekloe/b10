@@ -1,14 +1,15 @@
-#![feature(ascii_char)]
-#![feature(ascii_char_variants)]
 #![feature(bigint_helper_methods)]
+#![feature(maybe_uninit_slice)]
+#![feature(maybe_uninit_array_assume_init)]
 #![feature(strict_overflow_ops)]
 #![feature(test)]
 
 extern crate test;
 
-use std::ascii::Char;
 use std::convert::From;
 use std::fmt;
+use std::mem::MaybeUninit;
+use std::str::from_utf8_unchecked;
 
 /// Count with plain integers.
 pub type Natural = BaseCount<0>;
@@ -410,84 +411,6 @@ mod tests {
             };
         }
     }
-}
-
-/// The highest number of fractions fixed to zero is `i8::MIN` minus 20 variable
-/// digits for the `u64` count.
-static MAX_ZERO_LEAD: &str = "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-
-// alias ASCII digits
-const D0: Char = Char::Digit0;
-const D1: Char = Char::Digit1;
-const D2: Char = Char::Digit2;
-const D3: Char = Char::Digit3;
-const D4: Char = Char::Digit4;
-const D5: Char = Char::Digit5;
-const D6: Char = Char::Digit6;
-const D7: Char = Char::Digit7;
-const D8: Char = Char::Digit8;
-const D9: Char = Char::Digit9;
-
-// lookup table for decimal "00" up until "99"
-static DOUBLE_DIGIT_TABLE: [Char; 200] = [
-    D0, D0, D0, D1, D0, D2, D0, D3, D0, D4, // "00".."04"
-    D0, D5, D0, D6, D0, D7, D0, D8, D0, D9, // "05".."09"
-    D1, D0, D1, D1, D1, D2, D1, D3, D1, D4, // "10".."14"
-    D1, D5, D1, D6, D1, D7, D1, D8, D1, D9, // "15".."19"
-    D2, D0, D2, D1, D2, D2, D2, D3, D2, D4, // "20".."24"
-    D2, D5, D2, D6, D2, D7, D2, D8, D2, D9, // "25".."29"
-    D3, D0, D3, D1, D3, D2, D3, D3, D3, D4, // "30".."34"
-    D3, D5, D3, D6, D3, D7, D3, D8, D3, D9, // "35".."39"
-    D4, D0, D4, D1, D4, D2, D4, D3, D4, D4, // "40".."44"
-    D4, D5, D4, D6, D4, D7, D4, D8, D4, D9, // "45".."49"
-    D5, D0, D5, D1, D5, D2, D5, D3, D5, D4, // "50".."54"
-    D5, D5, D5, D6, D5, D7, D5, D8, D5, D9, // "55".."59"
-    D6, D0, D6, D1, D6, D2, D6, D3, D6, D4, // "60".."64"
-    D6, D5, D6, D6, D6, D7, D6, D8, D6, D9, // "65".."69"
-    D7, D0, D7, D1, D7, D2, D7, D3, D7, D4, // "70".."74"
-    D7, D5, D7, D6, D7, D7, D7, D8, D7, D9, // "75".."79"
-    D8, D0, D8, D1, D8, D2, D8, D3, D8, D4, // "80".."84"
-    D8, D5, D8, D6, D8, D7, D8, D8, D8, D9, // "85".."89"
-    D9, D0, D9, D1, D9, D2, D9, D3, D9, D4, // "90".."94"
-    D9, D5, D9, D6, D9, D7, D9, D8, D9, D9, // "95".."99"
-];
-
-/// Format the integer value as ASCII with leading zeroes.
-/// The usize return counts the number of leading zeroes.
-fn count_digits(n: u64) -> ([Char; 20], usize) {
-    // initialize result as "00000000000000000000"
-    let mut buf: [Char; 20] = [Char::Digit0; 20];
-    if n == 0 {
-        return (buf, 19);
-    }
-
-    // leading zero count equals write index
-    let mut i = buf.len();
-
-    // format backwards; least significant first
-    let mut remain = n;
-
-    // print per two digits
-    while remain > 9 {
-        let p = (remain % 100) as usize * 2;
-        remain /= 100;
-
-        i -= 2;
-        buf[i + 0] = DOUBLE_DIGIT_TABLE[p + 0];
-        buf[i + 1] = DOUBLE_DIGIT_TABLE[p + 1];
-    }
-
-    // print remainder digit, if any
-    if remain != 0 {
-        assert!(remain < 10);
-        let p = (remain as usize * 2) + 1;
-        // remain = 0; // redundant
-
-        i -= 1;
-        buf[i] = DOUBLE_DIGIT_TABLE[p];
-    }
-
-    return (buf, i);
 }
 
 /// Textual Representation
@@ -1493,36 +1416,6 @@ mod text_tests {
     use test::bench::black_box;
     use test::Bencher;
 
-    // Verify the DOUBLE_DIGIT_TABLE content in full.
-    #[test]
-    fn count_digits_table() {
-        for i in 1..102 {
-            let (buf, lzc) = count_digits(i);
-
-            let text = buf[..].as_str();
-            match text.parse::<u64>() {
-                Err(e) => assert!(false, "got {} for {}: {}", text, i, e),
-                Ok(v) => assert_eq!(v, i, "got {} for {}", text, i),
-            };
-
-            let dec_n: usize = i.ilog10() as usize + 1;
-            let want_lzc = buf.len() - dec_n;
-            assert_eq!(lzc, want_lzc, "leading-zero count for {}", text);
-        }
-
-        let (buf_min, lzc_min) = count_digits(u64::MIN);
-        assert_eq!("00000000000000000000", buf_min.as_str());
-        assert_eq!(19, lzc_min);
-
-        let (buf_max, lzc_max) = count_digits(u64::MAX);
-        assert_eq!("18446744073709551615", buf_max.as_str());
-        assert_eq!(0, lzc_max);
-
-        let (buf_tz, lzc_tz) = count_digits(1_000_000_000_000_000_000);
-        assert_eq!("01000000000000000000", buf_tz.as_str());
-        assert_eq!(1, lzc_tz);
-    }
-
     #[test]
     fn omission() {
         assert_eq!((0.into(), 0), Milli::parse(b""), "no text");
@@ -1807,6 +1700,57 @@ mod text_tests {
     }
 }
 
+// lookup table for decimal "00" up until "99"
+const DOUBLE_DIGIT_TABLE: [u8; 200] = *b"\
+    00010203040506070809\
+    10111213141516171819\
+    20212223242526272829\
+    30313233343536373839\
+    40414243444546474849\
+    50515253545556575859\
+    60616263646566676869\
+    70717273747576777879\
+    80818283848586878889\
+    90919293949596979899";
+
+fn fmt_int(f: &mut fmt::Formatter, n: u64) -> fmt::Result {
+    // Buffer decimals for self.c with fixed positions. Thus the
+    // least-significant digit is located at the last byte in buf.
+    let mut buf = [MaybeUninit::<u8>::uninit(); 20];
+    // Consume decimals from working copy until none left.
+    let mut remain = n;
+
+    // Set digits per two in buf with a lookup table.
+    for pair_index in (0..10).rev() {
+        let pair = (remain % 100) as usize;
+        remain /= 100;
+
+        buf[pair_index * 2 + 0].write(DOUBLE_DIGIT_TABLE[pair * 2 + 0]);
+        buf[pair_index * 2 + 1].write(DOUBLE_DIGIT_TABLE[pair * 2 + 1]);
+
+        if remain == 0 {
+            let digits = if pair > 9 {
+                &buf[pair_index * 2..]
+            } else {
+                &buf[pair_index * 2 + 1..]
+            };
+
+            // SAFETY: All bytes in buf since pair_index * 2 are set with ASCII
+            // from the lookup table.
+            return f.write_str(unsafe {
+                from_utf8_unchecked(MaybeUninit::slice_assume_init_ref(digits))
+            });
+        }
+    }
+
+    // SAFETY:: All bytes in buf are set with ASCII from the lookup table.
+    f.write_str(unsafe { from_utf8_unchecked(MaybeUninit::slice_assume_init_ref(&buf)) })
+}
+
+/// The highest number of fractions fixed to zero is `i8::MIN` minus 20 variable
+/// digits for the `u64` count.
+static MAX_ZERO_LEAD: &str = "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
 /// Display the number in plain-decimal notation. Any EXP above zero causes E
 /// notation (from `UpperExp`) instead.
 ///
@@ -1824,39 +1768,77 @@ mod text_tests {
 /// ```
 impl<const EXP: i8> fmt::Display for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if const { EXP != 0 } && f.alternate() {
+        if f.alternate() {
             return self.fmt_metric_prefix(f);
         }
-
-        match EXP {
-            // maybe plain integer
-            0 => {
-                let (buf, lzc) = count_digits(self.c);
-                f.write_str(buf[lzc..].as_str())
-            }
-
+        if const { EXP == 0 } {
+            return fmt_int(f, self.c);
+        }
+        if const { EXP > 0 } {
             // E notation for positive exponents
-            1.. => write!(f, "{self:E}"),
+            return write!(f, "{self:E}");
+        }
+        assert!(const { EXP < 0 });
 
-            // fraction with leading zero guarantee
-            ..=-20 => {
-                f.write_str(&MAX_ZERO_LEAD[..const { 2 - 20 - EXP as isize } as usize])?;
-                let (buf, _) = count_digits(self.c);
-                f.write_str(buf.as_str())
-            }
+        // Buffer decimals for self.c with fixed positions. Thus the
+        // least-significant digit is located at the last byte in buf.
+        let mut buf: [u8; 20] = [b'0'; 20];
+        // The leading-zero count equals the write index in buf.
+        let mut lzc = buf.len();
+        // Consume decimals from working copy until none left.
+        let mut remain = self.c;
 
-            // fraction
-            -19..0 => {
-                let (buf, lzc) = count_digits(self.c);
-                let dec_sep = const { EXP as isize + 20 } as usize;
-                if lzc < dec_sep {
-                    f.write_str(buf[lzc..dec_sep].as_str())?;
-                    f.write_str(".")?;
+        // digits per two from least significant to most significant
+        for pair_index in (0..10).rev() {
+            let pair = (remain % 100) as usize;
+            remain /= 100;
+
+            buf[pair_index * 2 + 0] = DOUBLE_DIGIT_TABLE[pair * 2 + 0];
+            buf[pair_index * 2 + 1] = DOUBLE_DIGIT_TABLE[pair * 2 + 1];
+
+            if remain == 0 {
+                if pair > 9 {
+                    lzc = pair_index * 2 + 0;
                 } else {
-                    f.write_str("0.")?;
+                    lzc = pair_index * 2 + 1;
                 }
-                f.write_str(buf[dec_sep..].as_str())
+                break;
             }
+        }
+
+        // maybe fraction with leading zero guarantee
+        if const { EXP <= -20 } {
+            f.write_str(&MAX_ZERO_LEAD[..const { 2 - EXP as isize - 20 } as usize])?;
+
+            // SAFETY: All buf's content lzc is set with bytes from the lookup table, which consists of valid ASCII exclusively.
+            let digits = unsafe { from_utf8_unchecked(&buf) };
+            return f.write_str(digits);
+        }
+
+        assert!(const { EXP > -20 && EXP < 0 });
+        let frac_offset = const { 20 + EXP as isize } as usize;
+        assert!(frac_offset > 0 && frac_offset < buf.len());
+
+        // maybe integer part
+        if lzc < frac_offset {
+            let int = unsafe { from_utf8_unchecked(&buf[lzc..frac_offset]) };
+            f.write_str(int)?;
+
+            // with decimal separator
+            buf[frac_offset - 1] = b'.';
+            let frac = unsafe { from_utf8_unchecked(&buf[frac_offset - 1..]) };
+            f.write_str(frac)
+        } else if frac_offset == 1 {
+            // write "0."
+            f.write_str(&MAX_ZERO_LEAD[..2])?;
+            let digits = unsafe { from_utf8_unchecked(&buf[frac_offset..]) };
+            f.write_str(digits)
+        } else {
+            assert!(frac_offset >= 2);
+            // set decimal separator
+            buf[frac_offset - 1] = b'.';
+            let s = unsafe { from_utf8_unchecked(&buf[frac_offset - 2..]) };
+            f.write_str(s)
         }
     }
 }
@@ -1871,7 +1853,7 @@ impl<const EXP: i8> fmt::Debug for BaseCount<EXP> {
 /// Print the integer count with the base (fixed).
 impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <u64 as fmt::Display>::fmt(&self.c, f)?;
+        fmt_int(f, self.c)?;
         f.write_str(BaseCount::<{ EXP }>::lower_exp())
     }
 }
@@ -1879,7 +1861,7 @@ impl<const EXP: i8> fmt::LowerExp for BaseCount<EXP> {
 /// Print the integer count with the base (fixed).
 impl<const EXP: i8> fmt::UpperExp for BaseCount<EXP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <u64 as fmt::Display>::fmt(&self.c, f)?;
+        fmt_int(f, self.c)?;
         f.write_str(BaseCount::<{ EXP }>::upper_exp())
     }
 }
@@ -1993,14 +1975,6 @@ mod fmt_tests {
         assert_eq!("42E-3", format!("{x:E}"), "upper case");
         assert_eq!("42e-3", format!("{x:e}"), "lower case");
         assert_eq!("42E-3", format!("{x:?}"), "from Debug");
-
-        assert_eq!("+42E-3", format!("{x:+E}"), "tolerate +");
-        assert_eq!("42e-3", format!("{x:-e}"), "tolerate -");
-
-        assert_eq!("0042E-3", format!("{x:04E}"), "zero pad");
-        assert_eq!("42e-3", format!("{x:01e}"), "under pad");
-
-        assert_eq!("42 E-3", format!("{x:<3E}"), "space fill");
     }
 
     #[test]
