@@ -23,7 +23,7 @@ let mA = Milli::from(100);
 let ns = Nano::from(4);
 
 // multiply into another base
-let (pC, overflow):(Pico, Pico) = mA.product(ns);
+let (pC, overflow):(Pico, Pico) = mA.mul(ns);
 if overflow != Pico::ZERO {
     panic!("product exceeds 2⁶⁴ − 1 pico");
 }

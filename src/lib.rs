@@ -94,8 +94,8 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///
     /// ```
     /// let pi = b10::Centi::from(314);
-    /// let (lt, _) = pi.sum(b10::Centi::ONE);
-    /// let (gt, _) = pi.difference(b10::Centi::ONE);
+    /// let (lt, _) = pi.add(b10::Centi::ONE);
+    /// let (gt, _) = pi.sub(b10::Centi::ONE);
     /// assert_eq!(
     ///     "π in range (3.13, 3.15)",
     ///     format!("π in range ({gt}, {lt})"),
@@ -186,7 +186,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// arguments, self + summand = sum + overflow, in which overflow is 2⁶⁴
     /// times the base when `true`, or 0 when `false`.
     #[inline(always)]
-    pub fn sum(self, summand: Self) -> (Self, bool) {
+    pub fn add(self, summand: Self) -> (Self, bool) {
         let (sum, overflow) = self.c.overflowing_add(summand.c);
         return (Self { c: sum }, overflow);
     }
@@ -199,16 +199,16 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// let (a, b): (b10::Deca, b10::Deca) = (7.into(), 9.into());
     /// assert_eq!(
     ///     "7E1 − 9E1 = (2E1, true)",
-    ///     format!("{a:?} − {b:?} = {0:?}", a.difference(b)),
+    ///     format!("{a:?} − {b:?} = {0:?}", a.sub(b)),
     /// );
     /// // zero is not negative
     /// assert_eq!(
     ///     "7E1 − 7E1 = (0E1, false)",
-    ///     format!("{a:?} − {a:?} = {0:?}", a.difference(a)),
+    ///     format!("{a:?} − {a:?} = {0:?}", a.sub(a)),
     /// );
     /// ```
     #[inline(always)]
-    pub fn difference(self, subtrahend: Self) -> (Self, bool) {
+    pub fn sub(self, subtrahend: Self) -> (Self, bool) {
         if self >= subtrahend {
             ((self.c - subtrahend.c).into(), false)
         } else {
@@ -227,7 +227,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// let mA = Milli::from(100);
     /// let ns = Nano::from(4);
     ///
-    /// let (pC, overflow):(Pico, Pico) = mA.product(ns);
+    /// let (pC, overflow):(Pico, Pico) = mA.mul(ns);
     /// if overflow != Pico::ZERO {
     ///     panic!("too much for pico");
     /// }
@@ -237,7 +237,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// );
     /// ```
     #[inline(always)]
-    pub fn product<const M: i8, const P: i8>(
+    pub fn mul<const M: i8, const P: i8>(
         self,
         multiplicant: BaseCount<M>,
     ) -> (BaseCount<P>, BaseCount<P>) {
@@ -261,14 +261,14 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// let price = b10::BaseCount::<-2>::from(100420);
     /// let fifty = b10::Natural::from(50);
     ///
-    /// let (part, rem) = price.quotient(fifty).unwrap();
+    /// let (part, rem) = price.div(fifty).unwrap();
     /// assert_eq!(
     ///     "1004.20 ÷ 50 is 20 with 4.20 remaining",
     ///     format!("{price} ÷ {fifty} is {part} with {rem} remaining"),
     /// );
     /// ```
     #[inline(always)]
-    pub fn quotient<const D: i8>(self, divisor: BaseCount<D>) -> Option<(u64, Self)> {
+    pub fn div<const D: i8>(self, divisor: BaseCount<D>) -> Option<(u64, Self)> {
         const {
             if D < EXP {
                 // could cause numeric overflows
@@ -285,18 +285,18 @@ impl<const EXP: i8> BaseCount<EXP> {
         }
     }
 
-    /// Euclidian division of self with a constant DIVISOR.
+    /// Get the quotient and the remainder for DIVISOR.
     ///
     /// ```
     /// let price = b10::BaseCount::<-2>::from(299);
-    /// let (half, remainder) = price.quotient_const::<2>();
+    /// let (half, remainder) = price.div_const::<2>();
     /// assert_eq!(
     ///     "½ of 2.99 is 1.49 with 0.01 remaining",
     ///     format!("½ of {price} is {half} with {remainder} remaining"),
     /// );
     /// ```
     #[inline(always)]
-    pub fn quotient_const<const DIVISOR: u64>(self) -> (Self, Self) {
+    pub fn div_const<const DIVISOR: u64>(self) -> (Self, Self) {
         const {
             if DIVISOR == 0 {
                 panic!("zero divisor denied");
@@ -305,13 +305,13 @@ impl<const EXP: i8> BaseCount<EXP> {
         ((self.c / DIVISOR).into(), (self.c % DIVISOR).into())
     }
 
-    /// Exponentiation of self with a constant POWER. The return is None when a
-    /// numeric overflow occurred.
+    /// Get the exponentiation of self with a constant POWER. The return is None
+    /// when a numeric overflow occurred.
     ///
     /// ```
     /// let rib = b10::Milli::from(12);
-    /// let square = rib.power_const::<2, -6>().unwrap();
-    /// let cube = rib.power_const::<3, -9>().unwrap();
+    /// let square = rib.pow_const::<2, -6>().unwrap();
+    /// let cube = rib.pow_const::<3, -9>().unwrap();
     /// assert_eq!(
     ///     "0.012² = 0.000144",
     ///     format!("{rib}² = {square}"),
@@ -321,7 +321,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///     format!("{rib}³ = {cube}"),
     /// );
     #[inline(always)]
-    pub fn power_const<const POWER: u32, const P: i8>(self) -> Option<BaseCount<P>> {
+    pub fn pow_const<const POWER: u32, const P: i8>(self) -> Option<BaseCount<P>> {
         // compile-time checks
         const {
             if POWER == 0 {
@@ -356,7 +356,7 @@ mod tests {
 
         assert_eq!(
             (Kilo::MAX, Kilo::ZERO),
-            Kilo::ONE.product(Natural::from(u64::MAX))
+            Kilo::ONE.mul(Natural::from(u64::MAX))
         );
     }
 
@@ -389,14 +389,14 @@ mod tests {
 
     #[test]
     fn sum_overflow() {
-        assert_eq!((Deci::from(6), true), Deci::MAX.sum(Deci::from(7)));
+        assert_eq!((Deci::from(6), true), Deci::MAX.add(Deci::from(7)));
     }
 
     #[test]
     fn product() {
         assert_eq!(
             (Natural::from(6), Natural::ZERO),
-            Natural::from(2).product(Natural::from(3))
+            Natural::from(2).mul(Natural::from(3))
         );
     }
 
@@ -409,17 +409,17 @@ mod tests {
             let da = Deci::from(a[i]);
             let db = Deca::from(b[i]);
 
-            match da.quotient(db) {
+            match da.div(db) {
                 None => assert_eq!(db, Deca::ZERO),
                 Some((quot, rem)) => {
                     assert_ne!(db, Deca::ZERO);
                     println!("{da} ÷ {db} got {quot} with {rem} remaining");
 
-                    let (prod, over) = Natural::from(quot).product::<1, 1>(db);
+                    let (prod, over) = Natural::from(quot).mul::<1, 1>(db);
                     println!("{quot} × {db} got {prod} + {over} × 2⁶⁴");
                     assert_eq!(over, Deca::ZERO);
 
-                    let (sum, carry) = prod.rebase::<-1>().unwrap().sum(rem);
+                    let (sum, carry) = prod.rebase::<-1>().unwrap().add(rem);
                     println!("{prod} × {rem} got {sum} with carry {carry}");
                     assert_eq!(sum, da);
                     assert!(!carry);
