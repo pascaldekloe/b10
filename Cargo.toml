@@ -12,3 +12,6 @@ homepage = "https://github.com/pascaldekloe/b10"
 repository = "https://github.com/pascaldekloe/b10"
 
 [dependencies]
+
+[workspace]
+members = ["fuzz/*"]
