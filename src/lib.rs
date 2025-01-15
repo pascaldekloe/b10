@@ -87,13 +87,23 @@ impl<const EXP: i8> From<BaseCount<EXP>> for u64 {
 }
 
 impl<const EXP: i8> BaseCount<EXP> {
-    /// Numeric value 0 is always in range.
+    /// Count 0 is the smallest value in range.
     pub const ZERO: Self = Self { c: 0 };
 
-    /// The smallest numeric value in range is 10 to the power of EXP.
+    /// Count 1 is the second smallest value in range, a.k.a. the resultion.
+    ///
+    /// ```
+    /// let pi = b10::Centi::from(314);
+    /// let (lt, _) = pi.sum(b10::Centi::ONE);
+    /// let (gt, _) = pi.difference(b10::Centi::ONE);
+    /// assert_eq!(
+    ///     "π in range (3.13, 3.15)",
+    ///     format!("π in range ({gt}, {lt})"),
+    /// );
+    /// ```
     pub const ONE: Self = Self { c: 1 };
 
-    /// The largest numeric value in range is `u64::MAX` times `Self::ONE`.
+    /// Count [u64::MAX] is the largest value in range.
     pub const MAX: Self = Self { c: u64::MAX };
 
     /// Get numeric value n iff an exact match within the base exponent exists,
@@ -336,12 +346,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn generic_constants() {
-        assert!(Kilo::ONE > Kilo::ZERO);
-        assert!(Kilo::MAX > Kilo::ONE);
+    fn constants() {
         assert_eq!(0 as u64, Kilo::ZERO.into());
         assert_eq!(1 as u64, Kilo::ONE.into());
         assert_eq!(u64::MAX, Kilo::MAX.into());
+
+        assert!(Kilo::ONE > Kilo::ZERO);
+        assert!(Kilo::MAX > Kilo::ONE);
+
+        assert_eq!(
+            (Kilo::MAX, Kilo::ZERO),
+            Kilo::ONE.product(Natural::from(u64::MAX))
+        );
     }
 
     #[test]
