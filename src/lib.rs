@@ -431,13 +431,6 @@ mod tests {
 
 /// Textual Representation
 impl<const EXP: i8> BaseCount<EXP> {
-    /// Require `parse` to consume the text in full. As such, the Option always
-    /// is an exact reading of the numeric value in text.
-    pub fn parse_all(text: &[u8]) -> Option<Self> {
-        let (c, read) = Self::parse(text);
-        return if read < text.len() { None } else { Some(c) };
-    }
-
     /// Read a numeric value from a JSON fragment until it finds either an ASCII
     /// comma (","), a closing brace ("}"), or a closing bracket ("]"). Trailing
     /// whitespace is ignored. The return is zero on error encounters.
@@ -464,10 +457,9 @@ impl<const EXP: i8> BaseCount<EXP> {
     }
 
     /// Get an exact reading of the numeric value at the start of text. The
-    /// `usize` in return has the number of octets parsed, which can be less
-    /// than slice length. Use `parse_all` to ensure a full reading instead.
-    /// Parsing is robust against malicious input. No assumptions are made on
-    /// the content of text.
+    /// `usize` in return has the number of octets parsed, which may be less
+    /// than the slice length! Parsing is robust against malicious input. No
+    /// assumptions are made on the byte content of text.
     ///
     /// ASCII character "." (0x2E) is recognised as a decimal separator. ASCII
     /// character "E" (0x45) and "e" (0x65) are both accepted for E notation.
@@ -1424,6 +1416,25 @@ impl<const EXP: i8> BaseCount<EXP> {
     }
 }
 
+/// Generic flag without explaination.
+#[derive(PartialEq, Debug)]
+pub struct ParseError;
+
+/// Require [BaseCount::parse] to consume a string in full. The empty string is
+/// rejected, and so is whitespace.
+impl<const EXP: i8> std::str::FromStr for BaseCount<EXP> {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (c, read) = Self::parse(s.as_bytes());
+        if read == 0 || read < s.len() {
+            Err(ParseError)
+        } else {
+            Ok(c)
+        }
+    }
+}
+
 #[cfg(test)]
 mod text_tests {
     use super::*;
@@ -1439,6 +1450,8 @@ mod text_tests {
         assert_eq!((9000.into(), 2), Milli::parse(b"9."), "no fraction");
         assert_eq!((9000.into(), 2), Milli::parse(b"9E"), "no exponent");
         assert_eq!((0.into(), 2), Milli::parse(b".E"), "no nothing");
+
+        assert!("".parse::<Milli>().is_err(), "FromStr no text");
     }
 
     #[test]
@@ -1507,75 +1520,63 @@ mod text_tests {
 
     #[test]
     fn max() {
-        let b0 = b"18446744073709551615";
-        assert_eq!((u64::MAX.into(), b0.len()), BaseCount::<0>::parse(b0));
-        let b0l21 = b"00000000000000000000018446744073709551615";
-        assert_eq!((u64::MAX.into(), b0l21.len()), BaseCount::<0>::parse(b0l21));
+        let b0 = "18446744073709551615";
+        assert_eq!(Ok(BaseCount::<0>::MAX), b0.parse());
+        let b0l21 = "00000000000000000000018446744073709551615";
+        assert_eq!(Ok(BaseCount::<0>::MAX), b0l21.parse());
 
-        let f1 = b"1844674407370955161.5";
-        assert_eq!((u64::MAX.into(), f1.len()), BaseCount::<-1>::parse(f1));
+        let f1 = "1844674407370955161.5";
+        assert_eq!(Ok(BaseCount::<-1>::MAX), f1.parse());
         // …
-        let f19 = b"1.8446744073709551615";
-        assert_eq!((u64::MAX.into(), f19.len()), BaseCount::<-19>::parse(f19));
-        let f20 = b"0.18446744073709551615";
-        assert_eq!((u64::MAX.into(), f20.len()), BaseCount::<-20>::parse(f20));
-        let f21 = b"0.018446744073709551615";
-        assert_eq!((u64::MAX.into(), f21.len()), BaseCount::<-21>::parse(f21));
+        let f19 = "1.8446744073709551615";
+        assert_eq!(Ok(BaseCount::<-19>::MAX), f19.parse());
+        let f20 = "0.18446744073709551615";
+        assert_eq!(Ok(BaseCount::<-20>::MAX), f20.parse());
+        let f21 = "0.018446744073709551615";
+        assert_eq!(Ok(BaseCount::<-21>::MAX), f21.parse());
         // …
-        let f39 = b"0.000000000000000000018446744073709551615";
-        assert_eq!((u64::MAX.into(), f39.len()), BaseCount::<-39>::parse(f39));
-        let f40 = b"0.0000000000000000000018446744073709551615";
-        assert_eq!((u64::MAX.into(), f40.len()), BaseCount::<-40>::parse(f40));
-        let f41 = b"0.00000000000000000000018446744073709551615";
-        assert_eq!((u64::MAX.into(), f41.len()), BaseCount::<-41>::parse(f41));
+        let f39 = "0.000000000000000000018446744073709551615";
+        assert_eq!(Ok(BaseCount::<-39>::MAX), f39.parse());
+        let f40 = "0.0000000000000000000018446744073709551615";
+        assert_eq!(Ok(BaseCount::<-40>::MAX), f40.parse());
+        let f41 = "0.00000000000000000000018446744073709551615";
+        assert_eq!(Ok(BaseCount::<-41>::MAX), f41.parse());
 
-        let b0e1 = b"18446744073709551615e1";
-        assert_eq!((u64::MAX.into(), b0e1.len()), BaseCount::<1>::parse(b0e1));
-        let f1e2 = b"1844674407370955161.5e2";
-        assert_eq!((u64::MAX.into(), f1e2.len()), BaseCount::<1>::parse(f1e2));
-        let f2e1 = b"184467440737095516.15e1";
-        assert_eq!((u64::MAX.into(), f2e1.len()), BaseCount::<-1>::parse(f2e1));
-        let f41e22n = b"0.00000000000000000000018446744073709551615e-22";
-        assert_eq!(
-            (u64::MAX.into(), f41e22n.len()),
-            BaseCount::<-63>::parse(f41e22n)
-        );
-        let f41e120 = b"0.00000000000000000000018446744073709551615e120";
-        assert_eq!(
-            (u64::MAX.into(), f41e120.len()),
-            BaseCount::<79>::parse(f41e120)
-        );
+        let b0e1 = "18446744073709551615e1";
+        assert_eq!(Ok(BaseCount::<1>::MAX), b0e1.parse());
+        let f1e2 = "1844674407370955161.5e2";
+        assert_eq!(Ok(BaseCount::<1>::MAX), f1e2.parse());
+        let f2e1 = "184467440737095516.15e1";
+        assert_eq!(Ok(BaseCount::<-1>::MAX), f2e1.parse());
+        let f41e22n = "0.00000000000000000000018446744073709551615e-22";
+        assert_eq!(Ok(BaseCount::<-63>::MAX), f41e22n.parse());
+        let f41e120 = "0.00000000000000000000018446744073709551615e120";
+        assert_eq!(Ok(BaseCount::<79>::MAX), f41e120.parse());
     }
 
     #[test]
     fn parse_zero() {
         let in_nano_range = [
-            "", "0", "00", "0.0", "00.0", "0.00", "00e00", "0.00e0", "00.00e-7",
+            "0", "00", "0.0", "00.0", "0.00", "00e00", "0.00e0", "00.00e-7",
         ];
 
         for s in in_nano_range {
-            let got = Nano::parse(s.as_bytes());
-            let want = (Nano::ZERO, s.len());
-            assert_eq!(want, got, "parse({})", s);
+            assert_eq!(Ok(Nano::ZERO), s.parse(), "parse {}", s);
         }
 
         // 21 non-significant digits
-        let ke3 = Kilo::parse(b"000000000000000000000e3");
-        assert_eq!((Kilo::ZERO, 21 + 2), ke3);
-        let ke4 = Kilo::parse(b"000000000000000000000e4");
-        assert_eq!((Kilo::ZERO, 21 + 2), ke4);
-        assert_eq!((Milli::ZERO, 21), Milli::parse(b"000000000000000000000"));
-        let ne9 = Nano::parse(b"000000000000000000000e-9");
-        assert_eq!((Nano::ZERO, 21 + 3), ne9);
-        let ne8 = Nano::parse(b"000000000000000000000e-8");
-        assert_eq!((Nano::ZERO, 21 + 3), ne8);
+        assert_eq!(Ok(Kilo::ZERO), "000000000000000000000e3".parse());
+        assert_eq!(Ok(Kilo::ZERO), "000000000000000000000e4".parse());
+        assert_eq!(Ok(Milli::ZERO), "000000000000000000000".parse());
+        assert_eq!(Ok(Nano::ZERO), "000000000000000000000e-9".parse());
+        assert_eq!(Ok(Nano::ZERO), "000000000000000000000e-8".parse());
 
         // non-significant digits far out of range
         let hi_res = BaseCount::<-128>::ZERO;
-        assert_eq!((hi_res, 3), BaseCount::parse(b"0.0"));
-        assert_eq!((hi_res, 5), BaseCount::parse(b"00.00"));
-        assert_eq!((hi_res, 23), BaseCount::parse(b"000000000000000000000.0"));
-        assert_eq!((hi_res, 23), BaseCount::parse(b"0.000000000000000000000"));
+        assert_eq!(Ok(hi_res), "0.0".parse());
+        assert_eq!(Ok(hi_res), "00.00".parse());
+        assert_eq!(Ok(hi_res), "000000000000000000000.0".parse());
+        assert_eq!(Ok(hi_res), "0.000000000000000000000".parse());
     }
 
     #[test]
@@ -1645,8 +1646,7 @@ mod text_tests {
         b.iter(|| {
             n += 1;
             let text = black_box(INTEGER_TEXTS[n % INTEGER_TEXTS.len()]);
-            let (got, read_n) = black_box(Natural::parse(text.as_bytes()));
-            assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
+            let got = black_box(Natural::from_str(text)).unwrap();
             assert_ne!(got, Natural::ZERO);
         });
     }
@@ -1657,8 +1657,7 @@ mod text_tests {
         b.iter(|| {
             n += 1;
             let text = black_box(INTEGER_TEXTS[n % INTEGER_TEXTS.len()]);
-            let (got, read_n) = black_box(Centi::parse(text.as_bytes()));
-            assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
+            let got = black_box(Centi::from_str(text)).unwrap();
             assert_ne!(got, Centi::ZERO);
         });
     }
@@ -1683,8 +1682,7 @@ mod text_tests {
         b.iter(|| {
             n += 1;
             let text = black_box(FRACTION_TEXTS[n % FRACTION_TEXTS.len()]);
-            let (got, read_n) = black_box(Nano::parse(text.as_bytes()));
-            assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
+            let got = black_box(Nano::from_str(text)).unwrap();
             assert_ne!(got, Nano::ZERO);
         });
     }
@@ -1709,8 +1707,7 @@ mod text_tests {
         b.iter(|| {
             n += 1;
             let text = black_box(EXPONENT_TEXTS[n % EXPONENT_TEXTS.len()]);
-            let (got, read_n) = black_box(Pico::parse(text.as_bytes()));
-            assert_eq!(read_n, text.len(), "read {read_n} bytes of {text}");
+            let got = black_box(Pico::from_str(text)).unwrap();
             assert_ne!(got, Pico::ZERO);
         });
     }
