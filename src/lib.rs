@@ -1,7 +1,6 @@
 #![feature(bigint_helper_methods)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_array_assume_init)]
-#![feature(strict_overflow_ops)]
 #![feature(test)]
 
 extern crate test;
@@ -134,52 +133,60 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// assert_eq!(Some(Kilo::from(7)), Centi::from(700_000).rebase());
     /// ```
     pub fn rebase<const R: i8>(self) -> Option<BaseCount<R>> {
-        if const { R == EXP } {
-            return Some(BaseCount::<R> { c: self.c });
-        }
+        match const { R as isize - EXP as isize } {
+            // same base; same count
+            0 => Some(self.c.into()),
 
-        if const { R < EXP } {
-            let (ratio, max_in) = const {
-                if R < EXP && (EXP as isize - R as isize) < 20 {
-                    let ratio = 10u64.strict_pow((EXP - R) as u32);
-                    (ratio, u64::MAX / ratio)
+            // 21 decimals or more causes a conversion ratio beyond u64::MAX
+            ..=-21 | 21.. => {
+                if self == Self::ZERO {
+                    Some(BaseCount::<R>::ZERO)
                 } else {
-                    // only zero can be converted
-                    (0u64, 0u64)
+                    None
                 }
-            };
-            return if self.c <= max_in {
-                Some(BaseCount::<R> { c: self.c * ratio })
-            } else {
-                // rebase overflows Self::MAX
-                None
-            };
-        }
-
-        assert!(const { R > EXP });
-
-        if const { R as isize - EXP as isize > 19 } {
-            // rebase underflows Self::ONE
-            return None;
-        }
-
-        let downscale = const {
-            // redundant check needed for compiler
-            if R > EXP && (R as isize - EXP as isize) < 20 {
-                10u64.strict_pow((R - EXP) as u32)
-            } else {
-                // not possible in this branch
-                42u64 // arbitrary placeholder
             }
-        };
-        // modulo and division caught as one by compiler
-        return if self.c % downscale == 0 {
-            Some(BaseCount::<R> {
-                c: self.c / downscale,
-            })
-        } else {
-            None
-        };
+
+            // lower base; raise count with a power of ten
+            -20..0 => {
+                let (ratio, max_in) = const {
+                    let add_dec_n = EXP as i32 - R as i32;
+                    // redundant check needed by compiler
+                    if add_dec_n >= 1 && add_dec_n <= 20 {
+                        let ratio = 10u64.pow(add_dec_n as u32);
+                        (ratio, u64::MAX / ratio)
+                    } else {
+                        (1, 1) // placeholder for unreachable
+                    }
+                };
+                // ensure unreachable above is actually unreachable
+                assert_ne!(max_in, 1);
+                if self.c <= max_in {
+                    Some(BaseCount::<R> { c: self.c * ratio })
+                } else {
+                    None // rebase overflows Self::MAX
+                }
+            }
+
+            // higher base; lower count with a power of ten
+            1..=20 => {
+                let ratio = const {
+                    let drop_dec_n = R as i32 - EXP as i32;
+                    // redundant check needed by compiler
+                    if drop_dec_n >= 1 && drop_dec_n <= 20 {
+                        10u64.pow(drop_dec_n as u32)
+                    } else {
+                        1 // placeholder for unreachable
+                    }
+                };
+                // ensure unreachable above is actually unreachable
+                assert_ne!(ratio, 1);
+                if self.c % ratio == 0 {
+                    Some(BaseCount::<R> { c: self.c / ratio })
+                } else {
+                    None // loss-of precision denied
+                }
+            }
+        }
     }
 
     /// Get the sum of both counts including an overflow flag. For any pair of
@@ -491,6 +498,8 @@ impl<const EXP: i8> BaseCount<EXP> {
         if parse_len == 0 {
             return (Self::ZERO, 0);
         }
+
+        // TODO: use rebase once generic const expressions are supported
 
         // rebase int/exp to generic EXP
         let count: Option<u64> = match exp - const { EXP as isize } {
