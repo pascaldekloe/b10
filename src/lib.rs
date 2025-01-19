@@ -1,6 +1,5 @@
 #![feature(bigint_helper_methods)]
 #![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_array_assume_init)]
 #![feature(test)]
 
 extern crate test;
@@ -8,6 +7,7 @@ extern crate test;
 use std::convert::From;
 use std::fmt;
 use std::mem::MaybeUninit;
+use std::slice;
 use std::str::from_utf8_unchecked;
 
 /// Count with plain integers.
@@ -1751,22 +1751,29 @@ fn fmt_int(f: &mut fmt::Formatter, n: u64) -> fmt::Result {
         buf[pair_index * 2 + 1].write(DOUBLE_DIGIT_TABLE[pair * 2 + 1]);
 
         if remain == 0 {
-            let digits = if pair > 9 {
-                &buf[pair_index * 2..]
-            } else {
-                &buf[pair_index * 2 + 1..]
-            };
-
             // SAFETY: All bytes in buf since pair_index * 2 are set with ASCII
             // from the lookup table.
             return f.write_str(unsafe {
-                from_utf8_unchecked(MaybeUninit::slice_assume_init_ref(digits))
+                let written = if pair > 9 {
+                    buf.get_unchecked(pair_index * 2..)
+                } else {
+                    buf.get_unchecked(pair_index * 2 + 1..)
+                };
+                from_utf8_unchecked(slice::from_raw_parts(
+                    MaybeUninit::slice_as_ptr(written),
+                    written.len(),
+                ))
             });
         }
     }
 
     // SAFETY:: All bytes in buf are set with ASCII from the lookup table.
-    f.write_str(unsafe { from_utf8_unchecked(MaybeUninit::slice_assume_init_ref(&buf)) })
+    f.write_str(unsafe {
+        from_utf8_unchecked(slice::from_raw_parts(
+            MaybeUninit::slice_as_ptr(&buf[..]),
+            buf.len(),
+        ))
+    })
 }
 
 /// The highest number of fractions fixed to zero is `i8::MIN` minus 20 variable
