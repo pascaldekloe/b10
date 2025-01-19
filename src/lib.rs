@@ -1,5 +1,4 @@
 #![feature(bigint_helper_methods)]
-#![feature(maybe_uninit_slice)]
 #![feature(test)]
 
 extern crate test;
@@ -1751,17 +1750,17 @@ fn fmt_int(f: &mut fmt::Formatter, n: u64) -> fmt::Result {
         buf[pair_index * 2 + 1].write(DOUBLE_DIGIT_TABLE[pair * 2 + 1]);
 
         if remain == 0 {
+            let offset = if pair > 9 {
+                pair_index * 2
+            } else {
+                pair_index * 2 + 1
+            };
             // SAFETY: All bytes in buf since pair_index * 2 are set with ASCII
             // from the lookup table.
             return f.write_str(unsafe {
-                let written = if pair > 9 {
-                    buf.get_unchecked(pair_index * 2..)
-                } else {
-                    buf.get_unchecked(pair_index * 2 + 1..)
-                };
                 from_utf8_unchecked(slice::from_raw_parts(
-                    MaybeUninit::slice_as_ptr(written),
-                    written.len(),
+                    MaybeUninit::as_ptr(&buf[offset]),
+                    20 - offset,
                 ))
             });
         }
@@ -1769,10 +1768,7 @@ fn fmt_int(f: &mut fmt::Formatter, n: u64) -> fmt::Result {
 
     // SAFETY:: All bytes in buf are set with ASCII from the lookup table.
     f.write_str(unsafe {
-        from_utf8_unchecked(slice::from_raw_parts(
-            MaybeUninit::slice_as_ptr(&buf[..]),
-            buf.len(),
-        ))
+        from_utf8_unchecked(slice::from_raw_parts(MaybeUninit::as_ptr(&buf[0]), 20))
     })
 }
 
