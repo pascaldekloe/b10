@@ -1,4 +1,3 @@
-#![feature(bigint_helper_methods)]
 #![feature(test)]
 
 extern crate test;
@@ -252,10 +251,11 @@ impl<const EXP: i8> BaseCount<EXP> {
                 panic!("generic EXP plus M goes not equal P");
             }
         }
-        let (product, overflow) = self.c.widening_mul(multiplicant.c);
+        let product = u128::from(self.c) * u128::from(multiplicant.c);
+        let overflow = product >> 64;
         return (
-            BaseCount::<P> { c: product },
-            BaseCount::<P> { c: overflow },
+            BaseCount::<P>::from(product as u64),
+            BaseCount::<P>::from(overflow as u64),
         );
     }
 
