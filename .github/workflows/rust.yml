@@ -15,6 +15,8 @@ jobs:
       run: rustup toolchain install nightly
     - uses: actions/checkout@v4
     - name: Unit Tests
-      run: cargo +nightly test --workspace
+      run: cargo test --workspace
+    - name: Bench Check
+      run: cargo +nightly bench --no-run
     - name: Code Formatting
       run: cargo fmt --check
