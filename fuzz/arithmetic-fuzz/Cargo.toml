@@ -1,0 +1,10 @@
+[package]
+name = "arithmetic-fuzz"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+afl = "*"
+
+[dependencies.b10]
+path = "../.."
