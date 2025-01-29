@@ -433,31 +433,6 @@ mod tests {
 
 /// Textual Representation
 impl<const EXP: i8> BaseCount<EXP> {
-    /// Read a numeric value from a JSON fragment until it finds either an ASCII
-    /// comma (","), a closing brace ("}"), or a closing bracket ("]"). Trailing
-    /// whitespace is ignored. The return is zero on error encounters.
-    pub fn parse_json(fragment: &[u8]) -> (Self, usize) {
-        let (c, mut i) = Self::parse(fragment);
-        return loop {
-            if i < fragment.len() {
-                match fragment[i] {
-                    // whitespace
-                    b' ' | b'\t' | b'\r' | b'\n' => {
-                        i += 1;
-                        continue;
-                    }
-
-                    // value continuation
-                    b',' | b'}' | b']' => break (c, i),
-
-                    // error
-                    _ => {}
-                }
-            }
-            break (Self::ZERO, 0);
-        };
-    }
-
     /// Get an exact reading of the numeric value at the start of text. The
     /// `usize` in return has the number of octets parsed, which may be less
     /// than the slice length! Parsing is robust against malicious input. No
