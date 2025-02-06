@@ -436,7 +436,12 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// Get an exact reading of the numeric value at the start of text. The
     /// `usize` in return has the number of octets parsed, which may be less
     /// than the slice length! Parsing is robust against malicious input. No
-    /// assumptions are made on the byte content of text.
+    /// assumptions are made on the byte content of text. Most usecases will
+    /// benefit from the more straightforward [str::parse] instead.
+    ///
+    /// ```
+    /// assert_eq!("0.001".parse(), Ok(b10::Milli::ONE));
+    /// ```
     ///
     /// ASCII character "." (0x2E) is recognised as a decimal separator. ASCII
     /// character "E" (0x45) and "e" (0x65) are both accepted for E notation.
@@ -1424,7 +1429,7 @@ mod text_tests {
         assert_eq!((900.into(), 2), Milli::parse(b".9"), "no integer");
         assert_eq!((9000.into(), 2), Milli::parse(b"9."), "no fraction");
         assert_eq!((9000.into(), 2), Milli::parse(b"9E"), "no exponent");
-        assert_eq!((0.into(), 2), Milli::parse(b".E"), "no nothing");
+        assert_eq!((0.into(), 2), Milli::parse(b".E"), "separators only");
 
         assert!("".parse::<Milli>().is_err(), "FromStr no text");
     }
