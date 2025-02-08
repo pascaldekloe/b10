@@ -69,7 +69,7 @@ impl<const EXP: i8> From<u64> for BaseCount<EXP> {
 ///
 /// ```
 /// type Century = b10::BaseCount::<2>;
-/// let previous = Century::map_n(1900).unwrap();
+/// let previous = Century::map_u64(1900).unwrap();
 /// assert_eq!(19, u64::from(previous));
 /// ```
 impl<const EXP: i8> From<BaseCount<EXP>> for u64 {
@@ -100,20 +100,20 @@ impl<const EXP: i8> BaseCount<EXP> {
     pub const MAX: Self = Self { c: u64::MAX };
 
     /// Get numeric value n iff an exact match within the base exponent exists,
-    /// and iff the numeric value is in range `Self::MAX`.
+    /// and iff the numeric value is in range [Self::MAX].
     ///
     /// ```
     /// use b10::{Centi, Kilo};
     ///
-    /// assert_eq!(Some(Centi::from(200)), Centi::map_n(2));
-    /// assert_eq!(Some(Kilo::from(5)), Kilo::map_n(5000));
+    /// assert_eq!(Some(Centi::from(200)), Centi::map_u64(2));
+    /// assert_eq!(Some(Kilo::from(5)), Kilo::map_u64(5000));
     ///
     /// // range protection
-    /// assert_eq!(None, Centi::map_n(u64::MAX));
+    /// assert_eq!(None, Centi::map_u64(u64::MAX));
     /// // loss-of-precision protection
-    /// assert_eq!(None, Kilo::map_n(5100));
+    /// assert_eq!(None, Kilo::map_u64(5100));
     /// ```
-    pub fn map_n(n: u64) -> Option<Self> {
+    pub fn map_u64(n: u64) -> Option<Self> {
         Natural::from(n).rebase()
     }
 
