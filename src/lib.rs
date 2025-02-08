@@ -357,6 +357,29 @@ impl<const EXP: i8> BaseCount<EXP> {
             Some(p) => Some(p.into()),
         }
     }
+
+    /// Get the base-10 logarithm, rounded down [toward negative infinity].
+    ///
+    /// ```
+    /// assert_eq!(b10::Mega::ONE.log10_floor(), Some(6), "⌊log₁₀(10⁶)⌋");
+    /// assert_eq!(b10::Micro::ONE.log10_floor(), Some(-6), "⌊log₁₀(10⁻⁶)⌋");
+    ///
+    /// let pi = b10::Centi::from(314);
+    /// assert_eq!(pi.log10_floor(), Some(0), "⌊log₁₀(π)⌋");
+    /// let pi_float: f64 = 3.14;
+    /// assert_eq!(pi_float.log10(), 0.49692964807321494, "f64 reference");
+    ///
+    /// let planck = b10::BaseCount::<-42>::from(662607015);
+    /// assert_eq!(planck.log10_floor(), Some(-34), "⌊log₁₀(ℎ)⌋");
+    /// let planck_float: f64 = 6.62607015E-34;
+    /// assert_eq!(planck_float.log10(), -33.17874397056745, "f64 reference");
+    /// ```
+    pub fn log10_floor(self) -> Option<i32> {
+        match self.c.checked_ilog10() {
+            None => None,
+            Some(l) => Some(l as i32 + const { EXP as i32 }),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -444,6 +467,40 @@ mod tests {
                 }
             };
         }
+    }
+
+    #[test]
+    fn log10_floor() {
+        assert_eq!(Milli::from(0).log10_floor(), None, "0.000");
+        assert_eq!(Milli::from(1).log10_floor(), Some(-3), "0.001");
+        // …
+        assert_eq!(Milli::from(9).log10_floor(), Some(-3), "0.009");
+        assert_eq!(Milli::from(10).log10_floor(), Some(-2), "0.010");
+        assert_eq!(Milli::from(11).log10_floor(), Some(-2), "0.011");
+        // …
+        assert_eq!(Milli::from(99).log10_floor(), Some(-2), "0.099");
+        assert_eq!(Milli::from(100).log10_floor(), Some(-1), "0.100");
+        assert_eq!(Milli::from(101).log10_floor(), Some(-1), "0.101");
+        // …
+        assert_eq!(Milli::from(999).log10_floor(), Some(-1), "0.999");
+        assert_eq!(Milli::from(1_000).log10_floor(), Some(0), "1.000");
+        assert_eq!(Milli::from(1_001).log10_floor(), Some(0), "1.001");
+        // …
+        assert_eq!(Milli::from(9_999).log10_floor(), Some(0), "9.999");
+        assert_eq!(Milli::from(10_000).log10_floor(), Some(1), "10.000");
+        assert_eq!(Milli::from(10_001).log10_floor(), Some(1), "10.001");
+        // …
+
+        assert_eq!(
+            BaseCount::<{ i8::MIN }>::ONE.log10_floor(),
+            Some(-128),
+            "smallest BaseCount",
+        );
+        assert_eq!(
+            BaseCount::<{ i8::MAX }>::from(u64::MAX).log10_floor(),
+            Some(146),
+            "largest BaseCount",
+        );
     }
 }
 

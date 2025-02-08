@@ -13,8 +13,9 @@ assert_eq!("€ 1.99", format!("€ {cents}"));
 ```
 
 All operation is lossless by design unless explicitly stated otherwise in the
-name of the respective method. The lossless guarantee applies to parsing and
-formatting too. Can't read nor write digits beyond the base resolution.
+name of the respective method (e.g. `log10_floor`). This lossless guarantee
+applies to parsing and formatting too. Can't read nor write digits beyond the
+base resolution.
 
 ```rust
 // metric prefixes
