@@ -247,12 +247,28 @@ impl<const EXP: i8> BaseCount<EXP> {
                 panic!("generic EXP plus M goes not equal P");
             }
         }
-        let product = u128::from(self.c) * u128::from(multiplicant.c);
-        let overflow = product >> 64;
-        return (
-            BaseCount::<P>::from(product as u64),
-            BaseCount::<P>::from(overflow as u64),
-        );
+        let wide = u128::from(self.c) * u128::from(multiplicant.c);
+        let product = wide & u64::MAX as u128;
+        let overflow = wide >> 64;
+        return ((product as u64).into(), (overflow as u64).into());
+    }
+
+    /// Get the product including the 64-bit overflow for MULTIPLICANT.
+    ///
+    /// ```
+    /// let price = b10::BaseCount::<-2>::from(299);
+    /// let (dozen, overflow) = price.mul_const::<12>();
+    /// assert_eq!(
+    ///     "a dozen priced 2.99 totals 35.88 plus 0.00 × 2⁶⁴",
+    ///     format!("a dozen priced {price} totals {dozen} plus {overflow} × 2⁶⁴"),
+    /// );
+    /// ```
+    #[inline(always)]
+    pub fn mul_const<const MULTIPLICANT: u64>(self) -> (Self, Self) {
+        let wide = u128::from(self.c) * u128::from(MULTIPLICANT);
+        let product = wide & u64::MAX as u128;
+        let overflow = wide >> 64;
+        return ((product as u64).into(), (overflow as u64).into());
     }
 
     /// Get the quotient and the remainder for divisor, with None for division
