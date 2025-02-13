@@ -183,6 +183,42 @@ impl<const EXP: i8> BaseCount<EXP> {
         }
     }
 
+    /// Get [Self::ONE] added to self, or None when [Self::MAX].
+    ///
+    /// ```
+    /// assert_eq!(b10::Centi::from(10).inc(), "0.11".parse().ok());
+    /// ```
+    #[inline(always)]
+    pub fn inc(self) -> Option<Self> {
+        match self.c.checked_add(1) {
+            None => None,
+            Some(sum) => Some(Self { c: sum }),
+        }
+    }
+
+    /// Get [Self::ONE] subtracted from self, or None when [Self::ZERO].
+    ///
+    /// ```
+    /// assert_eq!(b10::Centi::from(10).dec(), "0.09".parse().ok());
+    /// ```
+    #[inline(always)]
+    pub fn dec(self) -> Option<Self> {
+        match self.c.checked_sub(1) {
+            None => None,
+            Some(diff) => Some(Self { c: diff }),
+        }
+    }
+
+    /// Iterate incremental. The count starts at self plus [Self::ONE].
+    pub fn ascend(self) -> Ascend<EXP> {
+        Ascend { from: self }
+    }
+
+    /// Iterate decremental. The countdown starts at self minus [Self::ONE].
+    pub fn descend(self) -> Descend<EXP> {
+        Descend { from: self }
+    }
+
     /// Get the sum of both counts including an overflow flag. For any pair of
     /// arguments, self + summand = sum + overflow, in which overflow is 2⁶⁴
     /// times the base when `true`, or 0 when `false`.
@@ -1984,5 +2020,201 @@ mod fmt_tests {
         assert_eq!("0.00000", format!("{frac}"));
         assert_eq!("0.00 m", format!("{frac:#}"));
         assert_eq!("0e-5", format!("{frac:e}"));
+    }
+}
+
+/// Ascend increments with [BaseCount::ONE] until [BaseCount::MAX] is reached.
+///
+/// ```
+/// let mut asc = b10::Centi::ONE.ascend();
+/// assert_eq!(asc.next(), "0.02".parse().ok());
+/// assert_eq!(asc.next(), "0.03".parse().ok());
+///
+/// assert_eq!(asc.min(), "0.04".parse().ok());
+/// assert_eq!(asc.max(), Some(b10::Centi::MAX));
+///
+/// assert_eq!(asc.nth(5), "0.09".parse().ok());
+/// assert_eq!(asc.next(), "0.10".parse().ok());
+/// ```
+#[derive(Clone, Copy)]
+pub struct Ascend<const EXP: i8> {
+    from: BaseCount<EXP>,
+}
+
+/// Descend decrements with [BaseCount::ONE] until [BaseCount::ZERO] is reached.
+///
+/// ```
+/// let mut desc = b10::Centi::from(12).descend();
+/// assert_eq!(desc.next(), "0.11".parse().ok());
+/// assert_eq!(desc.next(), "0.10".parse().ok());
+///
+/// assert_eq!(desc.min(), "0.00".parse().ok());
+/// assert_eq!(desc.max(), "0.09".parse().ok());
+///
+/// assert_eq!(desc.nth(5), "0.04".parse().ok());
+/// assert_eq!(desc.next(), "0.03".parse().ok());
+/// ```
+#[derive(Clone, Copy)]
+pub struct Descend<const EXP: i8> {
+    from: BaseCount<EXP>,
+}
+
+impl<const EXP: i8> Iterator for Ascend<EXP> {
+    type Item = BaseCount<EXP>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.from.inc() {
+            None => None,
+            Some(inc) => {
+                self.from = inc;
+                Some(inc)
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match usize::try_from(u64::MAX - self.from.c) {
+            Err(_) => (usize::MAX, None),
+            Ok(size) => (size, Some(size)),
+        }
+    }
+
+    /// Count is not safe on systems with usize narrower than 64 bits.
+    fn count(self) -> usize {
+        // must panic on overflow if debug assertions are enabled
+        (u64::MAX - self.from.c) as usize
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        if self.from == Self::Item::MAX {
+            None
+        } else {
+            Some(Self::Item::MAX)
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match self.from.c.checked_add(n as u64) {
+            None => {
+                self.from = Self::Item::MAX;
+                None
+            }
+            Some(sum) => {
+                self.from.c = sum;
+                // n is zero based, so one more
+                self.next()
+            }
+        }
+    }
+
+    fn max(self) -> Option<Self::Item> {
+        self.last()
+    }
+
+    fn min(self) -> Option<Self::Item> {
+        self.from.inc()
+    }
+
+    fn is_sorted(self) -> bool {
+        true
+    }
+}
+
+impl<const EXP: i8> Iterator for Descend<EXP> {
+    type Item = BaseCount<EXP>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.from.dec() {
+            None => None,
+            Some(dec) => {
+                self.from = dec;
+                Some(dec)
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match usize::try_from(self.from.c) {
+            Err(_) => (usize::MAX, None),
+            Ok(size) => (size, Some(size)),
+        }
+    }
+
+    /// Count is not safe on systems with usize narrower than 64 bits.
+    fn count(self) -> usize {
+        // must panic on overflow if debug assertions are enabled
+        self.from.c as usize
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        if self.from == Self::Item::ZERO {
+            None
+        } else {
+            Some(Self::Item::ZERO)
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match self.from.c.checked_sub(n as u64) {
+            None => {
+                self.from = Self::Item::ZERO;
+                None
+            }
+            Some(diff) => {
+                self.from.c = diff;
+                // n is zero based, so one more
+                self.next()
+            }
+        }
+    }
+
+    fn max(self) -> Option<Self::Item> {
+        self.from.dec()
+    }
+
+    fn min(self) -> Option<Self::Item> {
+        self.last()
+    }
+
+    fn is_sorted(self) -> bool {
+        false
+    }
+}
+
+#[cfg(test)]
+mod iterator_tests {
+    use super::*;
+
+    #[test]
+    fn ascend_halt() {
+        let mut iter = Milli::from(u64::MAX - 2).ascend();
+        assert_eq!(iter.next(), Some(Milli::from(u64::MAX - 1)));
+        assert_eq!(iter.next(), Some(Milli::from(u64::MAX - 0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn descend_halt() {
+        let mut iter = Kilo::from(2).descend();
+        assert_eq!(iter.next(), Some(Kilo::ONE));
+        assert_eq!(iter.next(), Some(Kilo::ZERO));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn ascend_jumps() {
+        let mut dozens = Natural::from(11).ascend().step_by(12);
+        assert_eq!(dozens.next(), "12".parse().ok());
+        assert_eq!(dozens.next(), "24".parse().ok());
+        assert_eq!(dozens.nth(9), "144".parse().ok());
+    }
+
+    #[test]
+    fn descend_jumps() {
+        let odd_countdown = Natural::from(10).descend().step_by(2);
+        assert_eq!(
+            odd_countdown.collect::<Vec<_>>(),
+            vec![9.into(), 7.into(), 5.into(), 3.into(), 1.into()],
+        );
     }
 }
