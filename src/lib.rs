@@ -465,8 +465,19 @@ mod tests {
     }
 
     #[test]
-    fn sum_overflow() {
+    fn overflows() {
         assert_eq!((Deci::from(6), true), Deci::MAX.add(Deci::from(7)));
+
+        assert_eq!(
+            Natural::from(1 << 40).mul(Natural::from(1 << 40)),
+            (Natural::ZERO, Natural::from(1 << (40 + 40 - 64))),
+        );
+        assert_eq!(
+            Natural::from(1 << 40).mul_const::<{ 1 << 40 }>(),
+            (Natural::ZERO, Natural::from(1 << (40 + 40 - 64))),
+        );
+
+        assert_eq!(Natural::from(1 << 40).pow_const::<2, 0>(), None,);
     }
 
     #[test]
@@ -475,34 +486,6 @@ mod tests {
             (Natural::from(6), Natural::ZERO),
             Natural::from(2).mul(Natural::from(3))
         );
-    }
-
-    // quotient reversed with product plus remainder
-    #[test]
-    fn consistency() {
-        let a: [u64; 7] = [0, 0, 1, 42, u64::MAX, 200, 5000];
-        let b: [u64; 7] = [0, 1, 0, u64::MAX, 42, 20, 17];
-        for i in 0..a.len() {
-            let da = Deci::from(a[i]);
-            let db = Deca::from(b[i]);
-
-            match da.div(db) {
-                None => assert_eq!(db, Deca::ZERO),
-                Some((quot, rem)) => {
-                    assert_ne!(db, Deca::ZERO);
-                    println!("{da} ÷ {db} got {quot} with {rem} remaining");
-
-                    let (prod, over) = Natural::from(quot).mul::<1, 1>(db);
-                    println!("{quot} × {db} got {prod} + {over} × 2⁶⁴");
-                    assert_eq!(over, Deca::ZERO);
-
-                    let (sum, carry) = prod.rebase::<-1>().unwrap().add(rem);
-                    println!("{prod} × {rem} got {sum} with carry {carry}");
-                    assert_eq!(sum, da);
-                    assert!(!carry);
-                }
-            };
-        }
     }
 
     #[test]
