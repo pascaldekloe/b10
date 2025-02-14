@@ -40,7 +40,7 @@ pub type Quecto = BaseCount<-30>;
 /// let cents = b10::BaseCount::<-2>::from(199);
 /// assert_eq!("€ 1.99", format!("€ {cents}"));
 /// ```
-#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct BaseCount<const EXP: i8> {
     c: u64,
 }
