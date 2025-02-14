@@ -273,6 +273,12 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///     format!("{mA:E} × {ns:E} = {pC:E}"),
     /// );
     /// ```
+    ///
+    /// 🚧 Generic constant P is needed because “const parameters may only appear
+    /// as a standalone argument inside of a type” at the moment. Replacement is
+    /// is expected to happen once a return of `BaseCount<{ EXP + M }>` or
+    /// something similar is allowed. See `feature(generic_const_exprs)` at
+    /// at <https://github.com/rust-lang/rust/issues/76560> for more detail.
     #[inline(always)]
     pub fn mul<const M: i8, const P: i8>(
         self,
@@ -374,6 +380,13 @@ impl<const EXP: i8> BaseCount<EXP> {
     ///     "0.012³ = 0.000001728",
     ///     format!("{rib}³ = {cube}"),
     /// );
+    /// ```
+    ///
+    /// 🚧 Generic constant P is needed because “const parameters may only appear
+    /// as a standalone argument inside of a type” at the moment. Replacement is
+    /// is expected to happen once a return of `BaseCount<{ EXP * POWER }>` or
+    /// something similar is allowed. See `feature(generic_const_exprs)` at
+    /// at <https://github.com/rust-lang/rust/issues/76560> for more detail.
     #[inline(always)]
     pub fn pow_const<const POWER: u32, const P: i8>(self) -> Option<BaseCount<P>> {
         // compile-time checks
