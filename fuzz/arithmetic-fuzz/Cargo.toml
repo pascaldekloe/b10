@@ -8,3 +8,4 @@ afl = "*"
 
 [dependencies.b10]
 path = "../.."
+features = [ "redundant_generics" ]
