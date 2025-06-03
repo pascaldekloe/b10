@@ -16,6 +16,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Unit Tests
       run: cargo test --workspace
+    - name: Unit Tests With Features
+      run: cargo test --features redundant_generics
     - name: Bench Check
       run: cargo +nightly bench --no-run
     - name: Code Formatting

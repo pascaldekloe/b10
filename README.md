@@ -65,5 +65,13 @@ test text_tests::parse_integers_as_natural ... bench:           3.75 ns/iter (+/
 test text_tests::parse_integers_as_u64     ... bench:           3.12 ns/iter (+/- 0.01)
 ```
 
+Function `mul` and `pow_const` require the `redundant_generics` feature due to
+uncertainty about the `generic_const_exprs` feature (issue #8).
+
+```yaml
+[dependencies]
+b10 = { version = "1.0", features = ["redundant_generics"] }
+```
+
 This is free and unencumbered software released into the
 [public domain](https://creativecommons.org/publicdomain/zero/1.0).

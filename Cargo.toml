@@ -11,6 +11,10 @@ readme = "README.md"
 homepage = "https://github.com/pascaldekloe/b10"
 repository = "https://github.com/pascaldekloe/b10"
 
+[features]
+default = []
+redundant_generics = []
+
 [dependencies]
 
 [workspace]
