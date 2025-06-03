@@ -279,7 +279,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// alternative is expected once a return of `BaseCount<{ EXP + M }>` or
     /// something similar will be allowed. See `feature(generic_const_exprs)` at
     /// <https://github.com/rust-lang/rust/issues/76560> for more detail.
-    #[cfg(feature = "unstable_signature")]
+    #[cfg(feature = "redundant_generics")]
     #[inline(always)]
     pub fn mul<const M: i8, const P: i8>(
         self,
@@ -389,7 +389,7 @@ impl<const EXP: i8> BaseCount<EXP> {
     /// alternative is expected once a return of `BaseCount<{ EXP * POWER }>` or
     /// something similar will be allowed. See `feature(generic_const_exprs)` at
     /// <https://github.com/rust-lang/rust/issues/76560> for more detail.
-    #[cfg(feature = "unstable_signature")]
+    #[cfg(feature = "redundant_generics")]
     #[inline(always)]
     pub fn pow_const<const POWER: u32, const P: i8>(self) -> Option<BaseCount<P>> {
         // compile-time checks
@@ -447,6 +447,7 @@ mod tests {
         assert!(Kilo::ONE > Kilo::ZERO);
         assert!(Kilo::MAX > Kilo::ONE);
 
+        #[cfg(feature = "redundant_generics")]
         assert_eq!(
             (Kilo::MAX, Kilo::ZERO),
             Kilo::ONE.mul(Natural::from(u64::MAX))
@@ -484,6 +485,7 @@ mod tests {
     fn overflows() {
         assert_eq!((Deci::from(6), true), Deci::MAX.add(Deci::from(7)));
 
+        #[cfg(feature = "redundant_generics")]
         assert_eq!(
             Natural::from(1 << 40).mul(Natural::from(1 << 40)),
             (Natural::ZERO, Natural::from(1 << (40 + 40 - 64))),
@@ -493,10 +495,12 @@ mod tests {
             (Natural::ZERO, Natural::from(1 << (40 + 40 - 64))),
         );
 
+        #[cfg(feature = "redundant_generics")]
         assert_eq!(Natural::from(1 << 40).pow_const::<2, 0>(), None,);
     }
 
     #[test]
+    #[cfg(feature = "redundant_generics")]
     fn product() {
         assert_eq!(
             (Natural::from(6), Natural::ZERO),
