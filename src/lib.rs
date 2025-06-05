@@ -221,7 +221,7 @@ impl<const EXP: i8> BaseCount<EXP> {
 
     /// Get the sum of both counts including an overflow flag. For any pair of
     /// arguments, self + summand = sum + overflow, in which overflow is 2⁶⁴
-    /// times the base when `true`, or 0 when `false`.
+    /// times [Self::ONE] when `true`, or 0 when `false`.
     #[inline(always)]
     pub fn add(self, summand: Self) -> (Self, bool) {
         let (sum, overflow) = self.c.overflowing_add(summand.c);
@@ -253,10 +253,9 @@ impl<const EXP: i8> BaseCount<EXP> {
         }
     }
 
-    /// Get the product of both counts including the 64-bit overflow, if any.
-    /// A compile-time check guarantees that generic P is equal to EXP + M to
-    /// ensure a lossless calculation exclusively. For any pair of arguments,
-    /// self × multiplicant = product + (overflow × 2⁶⁴).
+    /// Get the product of both counts, including 64-bit overflow. For any pair
+    /// of arguments, self × multiplicant = product + (overflow × 2⁶⁴).
+    /// A compile-time check guarantees that generic P is equal to EXP + M.
     ///
     /// ```
     /// use b10::{Milli, Nano, Pico};
@@ -297,14 +296,16 @@ impl<const EXP: i8> BaseCount<EXP> {
         return ((product as u64).into(), (overflow as u64).into());
     }
 
-    /// Get the product including the 64-bit overflow for MULTIPLICANT.
+    /// Get the product of self and MULTIPLICANT, including 64-bit overflow. For
+    /// any pair of arguments, self × MULTIPLICANT = product + (overflow × 2⁶⁴).
     ///
     /// ```
-    /// let price = b10::BaseCount::<-2>::from(299);
-    /// let (dozen, overflow) = price.mul_const::<12>();
+    /// let x = b10::BaseCount::<-3>::from(2997);
+    /// const dozen: u64 = 12;
+    /// let (product, overflow) = x.mul_const::<dozen>();
     /// assert_eq!(
-    ///     "a dozen priced 2.99 totals 35.88 plus 0.00 × 2⁶⁴",
-    ///     format!("a dozen priced {price} totals {dozen} plus {overflow} × 2⁶⁴"),
+    ///     "12 × 2.997 = 35.964 + (0.000 × 2⁶⁴)",
+    ///     format!("{dozen} × {x} = {product} + ({overflow} × 2⁶⁴)"),
     /// );
     /// ```
     #[inline(always)]
