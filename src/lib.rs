@@ -210,13 +210,13 @@ impl<const EXP: i8> BaseCount<EXP> {
     }
 
     /// Iterate incremental. The count starts at self plus [Self::ONE].
-    pub fn ascend(self) -> Ascend<EXP> {
-        Ascend { from: self }
+    pub fn asc(self) -> Ascending<EXP> {
+        Ascending { from: self }
     }
 
     /// Iterate decremental. The countdown starts at self minus [Self::ONE].
-    pub fn descend(self) -> Descend<EXP> {
-        Descend { from: self }
+    pub fn desc(self) -> Descending<EXP> {
+        Descending { from: self }
     }
 
     /// Get the sum of both counts including an overflow flag. For any pair of
@@ -2027,10 +2027,11 @@ mod fmt_tests {
     }
 }
 
-/// Ascend increments with [BaseCount::ONE] until [BaseCount::MAX] is reached.
+/// Ascending increments with [BaseCount::ONE] until [BaseCount::MAX] is
+/// reached.
 ///
 /// ```
-/// let mut asc = b10::Centi::ONE.ascend();
+/// let mut asc = b10::Centi::ONE.asc();
 /// assert_eq!(asc.next(), "0.02".parse().ok());
 /// assert_eq!(asc.next(), "0.03".parse().ok());
 ///
@@ -2041,14 +2042,15 @@ mod fmt_tests {
 /// assert_eq!(asc.next(), "0.10".parse().ok());
 /// ```
 #[derive(Clone, Copy)]
-pub struct Ascend<const EXP: i8> {
+pub struct Ascending<const EXP: i8> {
     from: BaseCount<EXP>,
 }
 
-/// Descend decrements with [BaseCount::ONE] until [BaseCount::ZERO] is reached.
+/// Descending decrements with [BaseCount::ONE] until [BaseCount::ZERO] is
+/// reached.
 ///
 /// ```
-/// let mut desc = b10::Centi::from(12).descend();
+/// let mut desc = b10::Centi::from(12).desc();
 /// assert_eq!(desc.next(), "0.11".parse().ok());
 /// assert_eq!(desc.next(), "0.10".parse().ok());
 ///
@@ -2059,11 +2061,11 @@ pub struct Ascend<const EXP: i8> {
 /// assert_eq!(desc.next(), "0.03".parse().ok());
 /// ```
 #[derive(Clone, Copy)]
-pub struct Descend<const EXP: i8> {
+pub struct Descending<const EXP: i8> {
     from: BaseCount<EXP>,
 }
 
-impl<const EXP: i8> Iterator for Ascend<EXP> {
+impl<const EXP: i8> Iterator for Ascending<EXP> {
     type Item = BaseCount<EXP>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -2124,7 +2126,7 @@ impl<const EXP: i8> Iterator for Ascend<EXP> {
     }
 }
 
-impl<const EXP: i8> Iterator for Descend<EXP> {
+impl<const EXP: i8> Iterator for Descending<EXP> {
     type Item = BaseCount<EXP>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -2190,32 +2192,32 @@ mod iterator_tests {
     use super::*;
 
     #[test]
-    fn ascend_halt() {
-        let mut iter = Milli::from(u64::MAX - 2).ascend();
+    fn asc_halt() {
+        let mut iter = Milli::from(u64::MAX - 2).asc();
         assert_eq!(iter.next(), Some(Milli::from(u64::MAX - 1)));
         assert_eq!(iter.next(), Some(Milli::from(u64::MAX - 0)));
         assert_eq!(iter.next(), None);
     }
 
     #[test]
-    fn descend_halt() {
-        let mut iter = Kilo::from(2).descend();
+    fn desc_halt() {
+        let mut iter = Kilo::from(2).desc();
         assert_eq!(iter.next(), Some(Kilo::ONE));
         assert_eq!(iter.next(), Some(Kilo::ZERO));
         assert_eq!(iter.next(), None);
     }
 
     #[test]
-    fn ascend_jumps() {
-        let mut dozens = Natural::from(11).ascend().step_by(12);
+    fn asc_jumps() {
+        let mut dozens = Natural::from(11).asc().step_by(12);
         assert_eq!(dozens.next(), "12".parse().ok());
         assert_eq!(dozens.next(), "24".parse().ok());
         assert_eq!(dozens.nth(9), "144".parse().ok());
     }
 
     #[test]
-    fn descend_jumps() {
-        let odd_countdown = Natural::from(10).descend().step_by(2);
+    fn desc_jumps() {
+        let odd_countdown = Natural::from(10).desc().step_by(2);
         assert_eq!(
             odd_countdown.collect::<Vec<_>>(),
             vec![9.into(), 7.into(), 5.into(), 3.into(), 1.into()],
